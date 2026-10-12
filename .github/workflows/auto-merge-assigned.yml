@@ -1,0 +1,89 @@
+name: Auto-merge assigned PRs
+
+# Merges a PR when its author is assigned to an issue the PR closes and the PR has no merge conflicts.
+# Uses pull_request_target so fork PRs get a write token. NEVER check out or run PR code in this workflow.
+on:
+  pull_request_target:
+    types: [opened, reopened, synchronize, edited, ready_for_review]
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+concurrency:
+  group: auto-merge-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  auto-merge:
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.draft == false
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const pr = context.payload.pull_request;
+            const author = pr.user.login;
+            const notify = ['opened', 'reopened'].includes(context.payload.action);
+
+            const say = async (body) => {
+              if (notify) await github.rest.issues.createComment({ owner, repo, issue_number: pr.number, body });
+              core.info(body);
+            };
+
+            // Never auto-merge changes to workflows or other repo automation.
+            const files = await github.paginate(github.rest.pulls.listFiles, { owner, repo, pull_number: pr.number, per_page: 100 });
+            if (files.some(f => f.filename.startsWith('.github/') || (f.previous_filename || '').startsWith('.github/'))) {
+              await say('This PR changes `.github/`, so it will not be auto-merged and needs maintainer review.');
+              return;
+            }
+
+            // Issues this PR will close (Closes/Fixes/Resolves #N), with their assignees.
+            const data = await github.graphql(`
+              query($owner: String!, $repo: String!, $number: Int!) {
+                repository(owner: $owner, name: $repo) {
+                  pullRequest(number: $number) {
+                    closingIssuesReferences(first: 20) {
+                      nodes {
+                        number
+                        repository { nameWithOwner }
+                        assignees(first: 50) { nodes { login } }
+                      }
+                    }
+                  }
+                }
+              }`, { owner, repo, number: pr.number });
+
+            const issues = data.repository.pullRequest.closingIssuesReferences.nodes
+              .filter(i => i.repository.nameWithOwner.toLowerCase() === `${owner}/${repo}`.toLowerCase());
+
+            if (issues.length === 0) {
+              await say('Not auto-merged: the PR description must reference an issue it closes (for example `Closes #123`).');
+              return;
+            }
+
+            const unassigned = issues.filter(i => !i.assignees.nodes.some(a => a.login.toLowerCase() === author.toLowerCase()));
+            if (unassigned.length > 0) {
+              await say(`Not auto-merged: @${author} is not assigned to ${unassigned.map(i => '#' + i.number).join(', ')}. The PR may only close issues you are assigned to. Ask to be assigned, or remove the closing reference.`);
+              return;
+            }
+
+            // GitHub computes mergeability asynchronously; poll until it is known.
+            let mergeable = null;
+            for (let i = 0; i < 10; i++) {
+              const { data: fresh } = await github.rest.pulls.get({ owner, repo, pull_number: pr.number });
+              if (fresh.state !== 'open') return;
+              mergeable = fresh.mergeable;
+              if (mergeable !== null) break;
+              await new Promise(r => setTimeout(r, 5000));
+            }
+
+            if (mergeable !== true) {
+              await say('Not auto-merged: this PR has merge conflicts (or mergeability could not be determined). Resolve the conflicts and push again.');
+              return;
+            }
+
+            await github.rest.pulls.merge({ owner, repo, pull_number: pr.number, merge_method: 'merge' });
+            core.info(`Merged PR #${pr.number} by @${author}`);
