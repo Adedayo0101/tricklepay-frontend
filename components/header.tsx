@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { type JSX, useState, useEffect } from "react";
 
+import { NetworkBadge } from "@/components/network-badge";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { WalletButton } from "@/components/wallet-button";
 import { clearReturningFromStream } from "@/lib/scroll";
@@ -55,6 +56,9 @@ export function Header(): JSX.Element {
 
         {/* Right side: theme toggle + wallet + hamburger */}
         <div className="flex items-center gap-3">
+          {/* Network badge is always visible so the active network is never hidden */}
+          <NetworkBadge />
+
           {/* Theme toggle is always visible */}
           <ThemeToggle />
 
