@@ -85,5 +85,18 @@ jobs:
               return;
             }
 
-            await github.rest.pulls.merge({ owner, repo, pull_number: pr.number, merge_method: 'merge' });
+            const { data: merge } = await github.rest.pulls.merge({ owner, repo, pull_number: pr.number, merge_method: 'merge' });
+            if (!merge.merged) {
+              core.setFailed(`Merge of PR #${pr.number} did not complete: ${merge.message}`);
+              return;
+            }
             core.info(`Merged PR #${pr.number} by @${author}`);
+
+            // GitHub has not applied closing keywords to merges made by this workflow's GITHUB_TOKEN, so close the verified issues here.
+            for (const i of issues) {
+              const { data: issue } = await github.rest.issues.get({ owner, repo, issue_number: i.number });
+              if (issue.state !== 'open') continue;
+              await github.rest.issues.createComment({ owner, repo, issue_number: i.number, body: `Closed by #${pr.number}, which was merged automatically.` });
+              await github.rest.issues.update({ owner, repo, issue_number: i.number, state: 'closed', state_reason: 'completed' });
+              core.info(`Closed issue #${i.number}`);
+            }
