@@ -20,6 +20,10 @@ vi.mock("@/components/theme-toggle", () => ({
   ThemeToggle: () => <div data-testid="theme-toggle">Theme</div>,
 }));
 
+vi.mock("@/components/network-badge", () => ({
+  NetworkBadge: () => <div data-testid="network-badge">testnet</div>,
+}));
+
 import { Header } from "./header";
 
 describe("Header", () => {
@@ -47,6 +51,7 @@ describe("Header", () => {
     expect(container.textContent).toContain("TricklePay");
     expect(container.querySelector('[data-testid="wallet-button"]')).not.toBeNull();
     expect(container.querySelector('[data-testid="theme-toggle"]')).not.toBeNull();
+    expect(container.querySelector('[data-testid="network-badge"]')).not.toBeNull();
   });
 
   it("marks the active route in desktop navigation with aria-current='page'", async () => {
