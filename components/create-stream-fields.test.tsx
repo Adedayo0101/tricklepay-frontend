@@ -98,6 +98,30 @@ describe("CreateStreamFields", () => {
     expect(renderedOutput).not.toContain("End (optional)");
   });
 
+  describe('the "Use now" button', () => {
+    it("sets start to the current time, rounded to the minute", () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date(2026, 7, 27, 10, 15, 32));
+
+      const onFieldChange = vi.fn();
+      render(<CreateStreamFields {...defaultProps} onFieldChange={onFieldChange} />);
+
+      fireEvent.click(screen.getByRole("button", { name: "Set start to the current time" }));
+
+      expect(onFieldChange).toHaveBeenCalledWith("start", "2026-08-27T10:15");
+
+      vi.useRealTimers();
+    });
+
+    it("is offered only for the start field, not end or cliff", () => {
+      render(<CreateStreamFields {...defaultProps} />);
+
+      expect(screen.getAllByRole("button", { name: "Set start to the current time" })).toHaveLength(
+        1,
+      );
+    });
+  });
+
   describe("schedule presets", () => {
     it("renders the preset buttons and triggers onApplyPreset on click", () => {
       const onApplyPreset = vi.fn();
