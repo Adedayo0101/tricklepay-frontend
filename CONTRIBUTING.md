@@ -288,10 +288,10 @@ diff is unexpected, treat it as a bug in the code and fix the code.
 
 2. **Verify All Checks Pass Before Pushing**:
    ```bash
-   npm test
-   npm run typecheck
-   npm run lint
+   npm run check
    ```
+   This runs `lint`, `typecheck`, `test`, and `build` in order and stops at the
+   first failure. You can still run any of them individually while iterating.
 
 3. **Commit Message Format**:
    Use conventional commits:
