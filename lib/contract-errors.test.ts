@@ -1,6 +1,13 @@
+import { StrKey } from "@stellar/stellar-sdk";
 import { describe, expect, it } from "vitest";
 
-import { CONTRACT_ERROR_MESSAGES, GENERIC_FAILURE, parseContractError } from "@/lib/contract-errors";
+import { config } from "@/lib/config";
+import {
+  CONTRACT_ERROR_MESSAGES,
+  GENERIC_FAILURE,
+  parseContractError,
+  tokenFailureMessage,
+} from "@/lib/contract-errors";
 
 // Every discriminant of StreamError in the contract's
 // contracts/stream/src/error.rs, written out by hand on purpose: deriving this
@@ -44,5 +51,67 @@ describe("contract error table coverage", () => {
     expect(parseContractError(`Error(Contract, #${NEXT_UNUSED_CODE})`)).toBe(
       `${GENERIC_FAILURE} (error code ${NEXT_UNUSED_CODE})`,
     );
+  });
+});
+
+// Simulation failures end with the host's event log, newest first. The error
+// event of the contract that actually failed names that contract; the frames
+// above it are the callers escalating the same code.
+function simulationFailure(code: number, failingContract: string): string {
+  return [
+    `HostError: Error(Contract, #${code})`,
+    "",
+    "Event log (newest first):",
+    `   0: [Diagnostic Event] topics:[error, Error(Contract, #${code})], data:"escalating Ok(ScErrorType::Contract) frame-exit to Err"`,
+    `   1: [Diagnostic Event] contract:${config.contractId}, topics:[error, Error(Contract, #${code})], data:"caught error from function"`,
+    `   2: [Diagnostic Event] contract:${failingContract}, topics:[error, Error(Contract, #${code})], data:["failing with contract error", ${code}]`,
+  ].join("\n");
+}
+
+describe("errors from a contract other than the stream contract", () => {
+  const TOKEN_ID = StrKey.encodeContract(Buffer.alloc(32, 7));
+
+  it("does not map a token error whose number collides with a stream error", () => {
+    // The Stellar Asset Contract's BalanceError is 10, the stream's AmountTooLarge.
+    const message = parseContractError(
+      [
+        "HostError: Error(Contract, #10)",
+        "Event log (newest first):",
+        `   0: [Diagnostic Event] contract:${TOKEN_ID}, topics:[error, Error(Contract, #10)], data:"balance is not sufficient"`,
+      ].join("\n"),
+    );
+    expect(message).toBe(tokenFailureMessage(10));
+    expect(message).not.toBe(CONTRACT_ERROR_MESSAGES[10]);
+    expect(message).not.toMatch(/too large/);
+    expect(message).toMatch(/balance/);
+    expect(message).toMatch(/10/);
+  });
+
+  it.each([
+    [8, "NegativeAmountError"],
+    [9, "AllowanceError"],
+    [10, "BalanceError"],
+  ])("does not apply the stream message for colliding token code %i (%s)", (code) => {
+    const message = parseContractError(simulationFailure(code, TOKEN_ID));
+    expect(message).toBe(tokenFailureMessage(code));
+    expect(message).not.toBe(CONTRACT_ERROR_MESSAGES[code]);
+  });
+
+  it("maps the same code with the stream table when the stream contract raised it", () => {
+    const raw = simulationFailure(10, config.contractId);
+    expect(parseContractError(raw)).toBe(CONTRACT_ERROR_MESSAGES[10]);
+  });
+
+  it("maps a code with the stream table when the text does not name a contract", () => {
+    expect(parseContractError("Error(Contract, #10)")).toBe(CONTRACT_ERROR_MESSAGES[10]);
+  });
+
+  it("attributes the code that matches the headline, not an unrelated event", () => {
+    const raw = [
+      "HostError: Error(Contract, #7)",
+      `   0: [Diagnostic Event] contract:${TOKEN_ID}, topics:[error, Error(Contract, #10)], data:"x"`,
+      `   1: [Diagnostic Event] contract:${config.contractId}, topics:[error, Error(Contract, #7)], data:"x"`,
+    ].join("\n");
+    expect(parseContractError(raw)).toBe(CONTRACT_ERROR_MESSAGES[7]);
   });
 });

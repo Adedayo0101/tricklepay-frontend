@@ -1,5 +1,7 @@
 import type { NextConfig } from "next";
 
+import { assertContractIdForBuild } from "./lib/build-guard";
+
 // Pulls the origin out of a configured URL so it can be added to the CSP's
 // connect-src. Falls back to undefined for an unset or malformed value
 // rather than throwing — next.config.ts runs at build/start time and a bad
@@ -85,6 +87,9 @@ const nextConfig: NextConfig = {
 
 const makeConfig = (phase: string): NextConfig => {
   process.env.NEXT_PHASE = phase;
+  // lib/config.ts cannot enforce this during the build (prerendering has to
+  // succeed), so the build fails here instead.
+  if (phase === "phase-production-build") assertContractIdForBuild();
   return nextConfig;
 };
 
