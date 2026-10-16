@@ -39,9 +39,42 @@ describe("contract configuration", () => {
     vi.resetModules();
   });
 
-  it("fails clearly when NEXT_PUBLIC_CONTRACT_ID is missing", async () => {
+  // Why this used to resolve instead of rejecting: lib/config.ts validates the
+  // id when the module is first evaluated, and this file already imports it
+  // through "@/lib/contract" at the top. import("./config") then returned that
+  // cached module without evaluating it again, so the stubbed (empty) id was
+  // never read. vi.resetModules() forces a fresh evaluation.
+  //
+  // lib/config.ts also skips the check when NEXT_PRIVATE_BUILD_WORKER,
+  // IS_NEXT_WORKER or NEXT_PHASE=phase-production-build is set (a Next.js
+  // build), or when NEXT_PUBLIC_MOCK_API=true supplies a placeholder id. None
+  // is set under vitest, but a shell that has run `next build` can leak them,
+  // so each is cleared here to keep the test independent of the environment.
+  function stubMissingContractId() {
+    vi.resetModules();
     vi.stubEnv("NEXT_PUBLIC_CONTRACT_ID", "");
+    vi.stubEnv("NEXT_PUBLIC_MOCK_API", "false");
+    vi.stubEnv("NEXT_PRIVATE_BUILD_WORKER", "");
+    vi.stubEnv("IS_NEXT_WORKER", "");
+    vi.stubEnv("NEXT_PHASE", "");
+  }
+
+  it("fails clearly when NEXT_PUBLIC_CONTRACT_ID is missing", async () => {
+    stubMissingContractId();
     await expect(import("./config")).rejects.toThrow(/NEXT_PUBLIC_CONTRACT_ID is not set/);
+  });
+
+  it("skips the check during a production build, proving the bypass variables matter", async () => {
+    stubMissingContractId();
+    vi.stubEnv("NEXT_PHASE", "phase-production-build");
+    await expect(import("./config")).resolves.toBeDefined();
+  });
+
+  it("skips the check in mock mode, which supplies a placeholder id", async () => {
+    stubMissingContractId();
+    vi.stubEnv("NEXT_PUBLIC_MOCK_API", "true");
+    const { config } = await import("./config");
+    expect(config.contractId).not.toBe("");
   });
 });
 
