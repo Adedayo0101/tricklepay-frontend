@@ -217,7 +217,7 @@ await act(async () => {
 | [`components/stream-card.test.tsx`](../components/stream-card.test.tsx) | Simple prop-driven component, no providers, no mocks. Passes different `StreamView` props and asserts the rendered output. |
 | [`components/header.test.tsx`](../components/header.test.tsx) | Mocks `next/navigation` (`usePathname`) and child components (`WalletButton`, `ThemeToggle`). Renders with `createRoot`, queries nav links, simulates button clicks. |
 | [`components/theme-toggle.test.tsx`](../components/theme-toggle.test.tsx) | Wraps the component in `ThemeProvider`, simulates clicks, reads `localStorage` and the DOM class to verify theme changes. |
-| [`hooks/use-stream-page.test.tsx`](../hooks/use-stream-page.test.tsx) | Tests a hook directly by rendering it inside a tiny harness component with `act`. Mocks `lib/api.ts` to control responses. |
+| [`hooks/use-stream-page.test.ts`](../hooks/use-stream-page.test.ts) | Tests a hook directly by rendering it inside a tiny harness component with `act`. Mocks `lib/api.ts` to control responses. |
 | [`hooks/use-create-stream-form.test.tsx`](../hooks/use-create-stream-form.test.tsx) | Tests form validation, draft save/restore, and transaction submission by rendering the hook in a harness, stubbing `localStorage`, and mocking contract calls. |
 
 Start with `stream-card.test.tsx` for a minimal example, then look at
