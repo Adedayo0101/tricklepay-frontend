@@ -69,6 +69,8 @@ export function parseAmount(human: string): bigint {
     throw new Error("Amount must be greater than zero.");
   }
 
+  // Catches anything above i64::MAX here, before the wallet prompt, so the
+  // user never signs an amount the contract would revert with AmountTooLarge (#402).
   if (result > MAX_AMOUNT_BASE_UNITS) {
     throw new Error(`Amount cannot exceed ${MAX_HUMAN_AMOUNT}.`);
   }
