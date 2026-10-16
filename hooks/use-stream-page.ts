@@ -47,11 +47,12 @@ function pageQuery(
   role: StreamRole,
   address: string,
   offset: number,
-  status?: StreamStatus | "all",
+  status: StreamStatus | "all" | undefined,
+  pageSize: number,
 ): ListStreamsParams {
   const party: ListStreamsParams =
     role === "sender" ? { sender: address } : { recipient: address };
-  return { ...party, limit: PAGE_SIZE, offset, status };
+  return { ...party, limit: pageSize, offset, status };
 }
 
 /**
@@ -73,7 +74,8 @@ function pageQuery(
  * @param role - Whether to fetch streams where the address is "sender" or "recipient"
  * @param address - The wallet address to fetch streams for, or null if no wallet connected
  * @param status - Filter streams by status, or "all" to fetch streams of any status
- * 
+ * @param pageSize - Rows requested per page; defaults to PAGE_SIZE
+ *
  * @returns {StreamPage} An object containing:
  *   - streams: the list of streams loaded so far
  *   - total: total number of streams matching the query
@@ -90,6 +92,7 @@ export function useStreamPage(
   role: StreamRole,
   address: string | null,
   status: StreamStatus | "all" = "all",
+  pageSize: number = PAGE_SIZE,
 ): StreamPage {
   const [streams, setStreams] = useState<StreamView[]>([]);
   const [total, setTotal] = useState(0);
@@ -150,7 +153,7 @@ export function useStreamPage(
       for (let attempt = 1; attempt <= FIRST_PAGE_MAX_ATTEMPTS; attempt += 1) {
         const controller = startRequest();
         try {
-          const page = await listStreams(pageQuery(role, address, 0, status), {
+          const page = await listStreams(pageQuery(role, address, 0, status, pageSize), {
             signal: controller.signal,
           });
           endRequest(controller);
@@ -177,7 +180,7 @@ export function useStreamPage(
     run().finally(() => {
       if (generation.current === gen) setLoading(false);
     });
-  }, [role, address, status, abortInFlight, startRequest, endRequest]);
+  }, [role, address, status, pageSize, abortInFlight, startRequest, endRequest]);
 
   useEffect(() => {
     loadFirstPage();
@@ -194,7 +197,7 @@ export function useStreamPage(
     if (!address || (typeof document !== "undefined" && document.visibilityState === "hidden")) return;
     const gen = generation.current;
     const controller = startRequest();
-    listStreams(pageQuery(role, address, 0, status), { signal: controller.signal })
+    listStreams(pageQuery(role, address, 0, status, pageSize), { signal: controller.signal })
       .then((page) => {
         if (generation.current !== gen) return;
         setStreams(page.streams);
@@ -208,7 +211,7 @@ export function useStreamPage(
       .finally(() => {
         endRequest(controller);
       });
-  }, [role, address, status, startRequest, endRequest]);
+  }, [role, address, status, pageSize, startRequest, endRequest]);
 
   // Periodic and window-focus auto-refresh to reflect counterparty actions
   useEffect(() => {
@@ -241,7 +244,7 @@ export function useStreamPage(
     setLoadingMore(true);
     setError(null);
 
-    listStreams(pageQuery(role, address, fetched, status), { signal: controller.signal })
+    listStreams(pageQuery(role, address, fetched, status, pageSize), { signal: controller.signal })
       .then((page) => {
         if (generation.current !== gen) return;
         // A stream created since the first page shifts every later row by one,
@@ -273,6 +276,7 @@ export function useStreamPage(
     loading,
     loadingMore,
     status,
+    pageSize,
     startRequest,
     endRequest,
   ]);

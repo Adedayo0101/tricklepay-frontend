@@ -11,6 +11,7 @@ import { TransactionNotice } from "@/components/transaction-notice";
 import { useWallet } from "@/components/wallet-provider";
 import { useNow } from "@/hooks/use-now";
 import { useStreamPage, type StreamPage } from "@/hooks/use-stream-page";
+import { DEFAULT_PAGE_SIZE, isPageSize, PAGE_SIZE_OPTIONS, readPageSize, writePageSize, type PageSize } from "@/lib/page-size";
 import { takePendingNotice } from "@/lib/pending-notice";
 import { filterStreamsByAddress } from "@/lib/stream-search";
 import { isStreamSortOption, sortStreams, STREAM_SORT_OPTIONS, type StreamSortOption } from "@/lib/stream-sort";
@@ -240,8 +241,21 @@ function Dashboard() {
     [router, searchParams],
   );
 
-  const incoming = useStreamPage("recipient", wallet.address, filter);
-  const outgoing = useStreamPage("sender", wallet.address, filter);
+  // Restored from localStorage once mounted (see the effect below) rather
+  // than read eagerly, so the server-rendered markup and the first client
+  // render agree before the stored choice is applied.
+  const [pageSize, setPageSizeState] = useState<PageSize>(DEFAULT_PAGE_SIZE);
+  useEffect(() => {
+    setPageSizeState(readPageSize());
+  }, []);
+
+  const setPageSize = useCallback((size: PageSize) => {
+    setPageSizeState(size);
+    writePageSize(size);
+  }, []);
+
+  const incoming = useStreamPage("recipient", wallet.address, filter, pageSize);
+  const outgoing = useStreamPage("sender", wallet.address, filter, pageSize);
 
   // Client-side only: narrows whichever page is already loaded, rather than
   // asking the backend for a different one. Local state, not the URL — it
@@ -372,6 +386,26 @@ function Dashboard() {
           </select>
         </label>
         <span className="text-xs text-neutral-500">(sorts only the streams currently loaded on the page)</span>
+      </div>
+
+      <div className="mb-8 flex items-center gap-2">
+        <label className="flex items-center gap-2 text-xs text-neutral-400">
+          <span>Streams per page</span>
+          <select
+            value={pageSize}
+            onChange={(e) => {
+              const value = Number(e.target.value);
+              if (isPageSize(value)) setPageSize(value);
+            }}
+            className="rounded border border-neutral-700 bg-neutral-900 px-2 py-1 text-xs text-neutral-200 focus:border-neutral-500 focus-visible:outline-none"
+          >
+            {PAGE_SIZE_OPTIONS.map((option) => (
+              <option key={option} value={option}>
+                {option}
+              </option>
+            ))}
+          </select>
+        </label>
       </div>
 
       <div className="mb-6">
