@@ -11,8 +11,9 @@ import { TransactionNotice } from "@/components/transaction-notice";
 import { useWallet } from "@/components/wallet-provider";
 import { useNow } from "@/hooks/use-now";
 import { useStreamPage, type StreamPage } from "@/hooks/use-stream-page";
-import { formatStreamsTotal } from "@/lib/stream-total";
 import { takePendingNotice } from "@/lib/pending-notice";
+import { filterStreamsByAddress } from "@/lib/stream-search";
+import { formatStreamsTotal } from "@/lib/stream-total";
 import type { PendingNotice } from "@/types/notice";
 import type { StreamStatus } from "@/types/stream";
 
@@ -36,6 +37,7 @@ function StreamSection({
   title,
   page,
   filter,
+  addressQuery,
   emptyMessage,
   showCreateLink = false,
   className,
@@ -43,13 +45,16 @@ function StreamSection({
   title: string;
   page: StreamPage;
   filter: StreamStatus | "all";
+  addressQuery: string;
   emptyMessage: string;
   showCreateLink?: boolean;
   className?: string;
 }) {
-  const visible = page.streams;
+  // Client-side, over whatever page is already loaded — it does not ask the
+  // backend for a different page, so it only ever narrows what's on screen.
+  const visible = filterStreamsByAddress(page.streams, addressQuery);
   // Summed over the streams currently shown, which the active status filter
-  // has already narrowed, so the figure follows the filter.
+  // and search have already narrowed, so the figure follows both.
   const total = formatStreamsTotal(visible);
   // Re-render on an interval so a pending stream's "starts in …" countdown
   // in the lists keeps advancing while the absolute schedule stays on the
@@ -60,9 +65,11 @@ function StreamSection({
   // comment), too slow to show a last-fetch time climbing second by second.
   const now = useNow(5_000);
   const emptyText =
-    filter === "all" || page.streams.length === 0
-      ? (filter === "all" ? emptyMessage : `No ${filter} streams found.`)
-      : emptyMessage;
+    addressQuery.trim() && page.streams.length > 0
+      ? `No streams match "${addressQuery.trim()}".`
+      : filter === "all" || page.streams.length === 0
+        ? (filter === "all" ? emptyMessage : `No ${filter} streams found.`)
+        : emptyMessage;
 
   const showCreate = showCreateLink && page.streams.length === 0;
 
@@ -212,6 +219,11 @@ function Dashboard() {
   const incoming = useStreamPage("recipient", wallet.address, filter);
   const outgoing = useStreamPage("sender", wallet.address, filter);
 
+  // Client-side only: narrows whichever page is already loaded, rather than
+  // asking the backend for a different one. Local state, not the URL — it
+  // doesn't need to survive navigation the way the status filter does.
+  const [addressQuery, setAddressQuery] = useState("");
+
   // Picked up once per mount, e.g. after a redirect from a successful create.
   // takePendingNotice clears it from storage immediately, so a refresh never
   // repeats it. The functional update keeps the first read: StrictMode (dev)
@@ -254,6 +266,28 @@ function Dashboard() {
           onDismiss={() => setNotice(null)}
         />
       )}
+
+      <div className="mb-4 flex items-center gap-2">
+        <label className="flex-1">
+          <span className="sr-only">Search by sender or recipient address</span>
+          <input
+            type="search"
+            value={addressQuery}
+            onChange={(e) => setAddressQuery(e.target.value)}
+            placeholder="Search by sender or recipient address…"
+            className="w-full max-w-sm rounded border border-neutral-700 bg-neutral-900 px-3 py-1.5 text-sm text-neutral-200 placeholder:text-neutral-500 focus:border-neutral-500 focus-visible:outline-none"
+          />
+        </label>
+        {addressQuery && (
+          <button
+            onClick={() => setAddressQuery("")}
+            aria-label="Clear address search"
+            className="rounded border border-neutral-700 px-2 py-1 text-xs text-neutral-500 hover:border-neutral-500 hover:text-neutral-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-400 focus-visible:ring-offset-2"
+          >
+            Clear
+          </button>
+        )}
+      </div>
 
       <div
         role="group"
@@ -303,6 +337,7 @@ function Dashboard() {
         title="Incoming"
         page={incoming}
         filter={filter}
+        addressQuery={addressQuery}
         emptyMessage="No incoming streams."
         className="mb-10"
       />
@@ -310,6 +345,7 @@ function Dashboard() {
       <StreamSection
         title="Outgoing"
         page={outgoing}
+        addressQuery={addressQuery}
         filter={filter}
         emptyMessage="No outgoing streams."
         showCreateLink
