@@ -28,7 +28,9 @@ One JSON object in the browser's `localStorage`, under the key
   "amount": "100",
   "start": "2026-10-01T09:00",
   "end": "2026-11-01T09:00",
-  "cliff": ""
+  "cliff": "",
+  "durationAmount": "30",
+  "durationUnit": "days"
 }
 ```
 
@@ -38,6 +40,7 @@ One JSON object in the browser's `localStorage`, under the key
 | `token` | the raw contract id | |
 | `amount` | the raw decimal string | **Not** converted to 7-decimal base units. Conversion happens at submit time. |
 | `start`, `end`, `cliff` | the raw `datetime-local` strings | **Not** converted to Unix seconds. |
+| `durationAmount`, `durationUnit` | duration shortcut amount and unit | Stored as typed or derived from End, keeping both controls in sync (see [create-form-validation.md](create-form-validation.md#duration-optional)). |
 | — | no field for the sender | The connected account is not part of the draft. |
 
 Only the public parameters of a stream you are about to create are written. No
@@ -59,14 +62,15 @@ Two consequences worth knowing:
 ## 2. When a draft is saved
 
 A `useEffect` in `useCreateStreamForm` (`hooks/use-create-stream-form.ts`) runs on
-mount and again whenever any of the six field values changes, rewriting the whole
-object from the current values.
+mount and again whenever any of the eight field values changes, rewriting the
+whole object from the current values.
 
 - **Every change is written immediately.** There is no debounce and no save
   button; the key is up to date as of the last keystroke.
-- **Only if at least one field is non-empty.** Whitespace does not count. When
-  every field is blank or whitespace-only, the key is *removed* rather than
-  written with empty strings.
+- **Only if at least one field is non-empty.** Whitespace does not count, and
+  `durationUnit` doesn't either — its `<select>` always holds a value, so alone
+  it is never "something was entered". When every other field is blank or
+  whitespace-only, the key is *removed* rather than written with empty strings.
 - **The whole object is written each time**, so a field you clear in the UI is
   also cleared in storage.
 - **Storage failures are swallowed.** If `localStorage` throws — private
@@ -137,7 +141,8 @@ Two things that deliberately **do not** discard the draft:
 
 - **Unreadable storage.** If the stored value is not valid JSON, `readFormDraft`
   returns `null` and the form opens empty — no error is shown. Missing keys in an
-  otherwise valid object default to `""`; unknown extra keys are ignored.
+  otherwise valid object default to `""` (`durationUnit` defaults to `"days"`,
+  since its `<select>` always has a value); unknown extra keys are ignored.
 - **Whitespace-only input is treated as empty**, so a form where you typed only
   spaces is not saved.
 - **A restored draft can be invalid.** An address that has since gone stale, or an

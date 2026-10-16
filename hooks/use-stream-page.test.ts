@@ -169,4 +169,61 @@ describe("useStreamPage — load error", () => {
     expect(page.loading).toBe(true);
     expect(page.error).toBeNull();
   });
+
+  it("leaves lastUpdated null when the only fetch so far has failed", async () => {
+    vi.mocked(listStreams).mockRejectedValue(new Error("Network unreachable"));
+
+    harness.render(() => useStreamPage("sender", ADDRESS));
+    await flush();
+    const page = harness.render(() => useStreamPage("sender", ADDRESS));
+
+    expect(page.lastUpdated).toBeNull();
+  });
+});
+
+describe("useStreamPage — lastUpdated", () => {
+  const NOW = Date.UTC(2026, 0, 1, 12, 0, 0);
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("is null before the first fetch completes", () => {
+    vi.mocked(listStreams).mockReturnValue(new Promise(() => {}));
+
+    const page = harness.render(() => useStreamPage("sender", ADDRESS));
+
+    expect(page.lastUpdated).toBeNull();
+  });
+
+  it("records when the first page finished loading", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(NOW);
+    vi.mocked(listStreams).mockResolvedValue({ streams: [], total: 0, limit: PAGE_SIZE, offset: 0 });
+
+    harness.render(() => useStreamPage("sender", ADDRESS));
+    await flush();
+    const page = harness.render(() => useStreamPage("sender", ADDRESS));
+
+    expect(page.lastUpdated).toBe(NOW);
+  });
+
+  it("is refreshed by a manual refresh, not just the initial load", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(NOW);
+    vi.mocked(listStreams).mockResolvedValue({ streams: [], total: 0, limit: PAGE_SIZE, offset: 0 });
+
+    harness.render(() => useStreamPage("sender", ADDRESS));
+    await flush();
+    const firstLoad = harness.render(() => useStreamPage("sender", ADDRESS));
+    expect(firstLoad.lastUpdated).toBe(NOW);
+
+    const LATER = NOW + 45_000;
+    vi.setSystemTime(LATER);
+    firstLoad.refresh();
+    await flush();
+    const afterRefresh = harness.render(() => useStreamPage("sender", ADDRESS));
+
+    expect(afterRefresh.lastUpdated).toBe(LATER);
+  });
 });

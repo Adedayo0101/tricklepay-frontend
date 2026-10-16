@@ -37,6 +37,8 @@ const HALF_FILLED_DRAFT: FormDraft = {
   start: "2026-08-27T10:00",
   end: "2026-08-27T12:00",
   cliff: "",
+  durationAmount: "",
+  durationUnit: "days",
 };
 
 describe("create-form-draft", () => {

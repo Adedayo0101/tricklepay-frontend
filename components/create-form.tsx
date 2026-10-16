@@ -58,6 +58,7 @@ export function CreateForm(): JSX.Element {
       errors={form.errors}
       refs={form.refs}
       onFieldChange={form.setField}
+      onApplyPreset={form.applyPreset}
       previewRate={form.previewRate}
       previewDuration={form.previewDuration}
       feedback={feedback}

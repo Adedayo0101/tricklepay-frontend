@@ -8,6 +8,7 @@ import {
   formatTokenRate,
   formatTokenDisplay,
   relativeTime,
+  timeAgo,
   timeRemaining,
   truncateAddress,
 } from "@/lib/format";
@@ -268,5 +269,49 @@ describe("relativeTime", () => {
   it("returns a generic past form for other verbs", () => {
     freeze();
     expect(relativeTime(at(-1), "cliff")).toBe("cliff passed");
+  });
+});
+
+describe("timeAgo", () => {
+  const NOW = Date.UTC(2026, 0, 1, 12, 0, 0);
+
+  it("reads as just now for a few seconds", () => {
+    expect(timeAgo(NOW, NOW)).toBe("just now");
+    expect(timeAgo(NOW - 4_000, NOW)).toBe("just now");
+  });
+
+  it("counts seconds once distinguishable from just now", () => {
+    expect(timeAgo(NOW - 5_000, NOW)).toBe("5 seconds ago");
+    expect(timeAgo(NOW - 12_000, NOW)).toBe("12 seconds ago");
+    expect(timeAgo(NOW - 59_000, NOW)).toBe("59 seconds ago");
+  });
+
+  it("switches to minutes at 60 seconds, singular at exactly one", () => {
+    expect(timeAgo(NOW - 60_000, NOW)).toBe("1 minute ago");
+    expect(timeAgo(NOW - 90_000, NOW)).toBe("1 minute ago");
+    expect(timeAgo(NOW - 2 * 60_000, NOW)).toBe("2 minutes ago");
+    expect(timeAgo(NOW - 59 * 60_000, NOW)).toBe("59 minutes ago");
+  });
+
+  it("switches to hours at 60 minutes, singular at exactly one", () => {
+    expect(timeAgo(NOW - 60 * 60_000, NOW)).toBe("1 hour ago");
+    expect(timeAgo(NOW - 3 * 3600_000, NOW)).toBe("3 hours ago");
+    expect(timeAgo(NOW - 23 * 3600_000, NOW)).toBe("23 hours ago");
+  });
+
+  it("switches to days at 24 hours, singular at exactly one", () => {
+    expect(timeAgo(NOW - 24 * 3600_000, NOW)).toBe("1 day ago");
+    expect(timeAgo(NOW - 5 * 24 * 3600_000, NOW)).toBe("5 days ago");
+  });
+
+  it("never reads as negative when the clock is briefly behind the timestamp", () => {
+    expect(timeAgo(NOW + 2_000, NOW)).toBe("just now");
+  });
+
+  it("defaults to measuring from Date.now() when nowMs is omitted", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(NOW);
+    expect(timeAgo(NOW - 12_000)).toBe("12 seconds ago");
+    vi.useRealTimers();
   });
 });

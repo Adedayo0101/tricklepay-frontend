@@ -56,6 +56,7 @@ function mockDisconnected() {
     error: null,
     refresh: vi.fn(),
     loadMore: vi.fn(),
+    lastUpdated: null,
   });
 }
 
@@ -95,6 +96,7 @@ function mockConnectedWithData() {
     error: null,
     refresh: vi.fn(),
     loadMore: vi.fn(),
+    lastUpdated: null,
   });
 }
 
@@ -198,6 +200,7 @@ describe("Dashboard Page", () => {
         error: null,
         refresh: vi.fn(),
         loadMore: vi.fn(),
+        lastUpdated: null,
       });
 
       const el = Home();

@@ -24,6 +24,13 @@ export interface StreamPage {
   hasMore: boolean;
   loadMore: () => void;
   refresh: () => void;
+  /**
+   * Epoch milliseconds of the most recent successful fetch (first page,
+   * background refresh, or load-more), or `null` before the first one
+   * completes. Not reset on a failed refresh — a failure means the data on
+   * screen is stale, which is exactly when its last-known age matters most.
+   */
+  lastUpdated: number | null;
 }
 
 function pageQuery(
@@ -64,6 +71,8 @@ function pageQuery(
  *   - hasMore: true if there are more streams to load
  *   - loadMore: function to fetch the next page
  *   - refresh: function to reload from page 0
+ *   - lastUpdated: epoch ms of the most recent successful fetch, or null
+ *     before the first one completes
  */
 export function useStreamPage(
   role: StreamRole,
@@ -79,6 +88,7 @@ export function useStreamPage(
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [lastUpdated, setLastUpdated] = useState<number | null>(null);
 
   // Bumped whenever the query changes. A request compares the generation it
   // started under against the current one before writing, so a slow page cannot
@@ -130,6 +140,7 @@ export function useStreamPage(
         setStreams(page.streams);
         setTotal(page.total);
         setFetched(page.streams.length);
+        setLastUpdated(Date.now());
       })
       .catch((err: unknown) => {
         // A cancelled request is an expected outcome, not a failure to report.
@@ -163,6 +174,7 @@ export function useStreamPage(
         setStreams(page.streams);
         setTotal(page.total);
         setFetched(page.streams.length);
+        setLastUpdated(Date.now());
       })
       .catch(() => {
         // Background refresh failure, or cancellation: retain existing on-screen rows
@@ -217,6 +229,7 @@ export function useStreamPage(
         // An empty page means the result set shrank between requests; trust the
         // rows in hand over the reported total so the button does not stick.
         setTotal(page.streams.length === 0 ? fetched : page.total);
+        setLastUpdated(Date.now());
       })
       .catch((err: unknown) => {
         if (isAbortError(err) || generation.current !== gen) return;
@@ -238,5 +251,5 @@ export function useStreamPage(
     endRequest,
   ]);
 
-  return { streams, total, loading, loadingMore, error, hasMore, loadMore, refresh };
+  return { streams, total, loading, loadingMore, error, hasMore, loadMore, refresh, lastUpdated };
 }
