@@ -3,6 +3,8 @@ import { describe, it, expect } from "vitest";
 import {
   isValidStellarAddress,
   isValidContractAddress,
+  MAX_AMOUNT_BASE_UNITS,
+  MAX_HUMAN_AMOUNT,
   parseAmount,
   toUnix,
   validateStreamDates,
@@ -81,6 +83,45 @@ describe("lib/validation", () => {
     it("throws when parsed base unit amount is zero", () => {
       expect(() => parseAmount("0")).toThrow("Amount must be greater than zero.");
       expect(() => parseAmount("0.0000000")).toThrow("Amount must be greater than zero.");
+    });
+
+    // The contract caps a stream's total at i64::MAX base units and reverts
+    // anything larger with AmountTooLarge, so the client has to draw the line
+    // at exactly the same base unit.
+    describe("amount ceiling", () => {
+      it("is i64::MAX base units, matching the contract", () => {
+        expect(MAX_AMOUNT_BASE_UNITS).toBe(2n ** 63n - 1n);
+        expect(parseAmount(MAX_HUMAN_AMOUNT)).toBe(MAX_AMOUNT_BASE_UNITS);
+      });
+
+      it("accepts the largest valid amount, 922337203685.4775807", () => {
+        expect(parseAmount("922337203685.4775807")).toBe(9_223_372_036_854_775_807n);
+      });
+
+      it("rejects one base unit more, 922337203685.4775808", () => {
+        expect(() => parseAmount("922337203685.4775808")).toThrow(
+          "Amount cannot exceed 922337203685.4775807.",
+        );
+      });
+
+      it("rejects the next whole token above the ceiling", () => {
+        expect(() => parseAmount("922337203686")).toThrow("Amount cannot exceed");
+      });
+
+      it("keeps every digit of an amount beyond Number's safe integer range", () => {
+        // 2^53 + 1 base units: Number would round this to 2^53.
+        const human = "900719925.4740993";
+        expect(Number(9_007_199_254_740_993n)).toBe(Number.MAX_SAFE_INTEGER + 1);
+        expect(parseAmount(human)).toBe(9_007_199_254_740_993n);
+        // The ceiling itself is not representable as a Number either.
+        expect(BigInt(Number(MAX_AMOUNT_BASE_UNITS))).not.toBe(MAX_AMOUNT_BASE_UNITS);
+      });
+
+      it("rejects an amount too large for a JavaScript number with the ceiling message", () => {
+        const huge = "1" + "0".repeat(400); // Number(huge) === Infinity
+        expect(Number(huge)).toBe(Infinity);
+        expect(() => parseAmount(huge)).toThrow("Amount cannot exceed 922337203685.4775807.");
+      });
     });
   });
 
