@@ -47,8 +47,19 @@ export function amountFieldError(value: string): string | undefined {
   }
 }
 
+/**
+ * The end must come after the start and after the current moment. An end that
+ * is exactly now is rejected too: by the time the transaction reaches the
+ * ledger it is already in the past, which the contract refuses with
+ * StreamWindowInPast (code 11). The clock is read on every call, so a value
+ * that was fine when typed is caught again at submit if it has gone stale.
+ */
 export function endFieldError(start: string, end: string): string | undefined {
-  return start && end && toUnix(end) <= toUnix(start) ? "End must be after start." : undefined;
+  if (!end) return undefined;
+  const endUnix = toUnix(end);
+  if (start && endUnix <= toUnix(start)) return "End must be after start.";
+  const nowUnix = BigInt(Math.floor(Date.now() / 1000));
+  return endUnix <= nowUnix ? "End must be in the future." : undefined;
 }
 
 export function cliffFieldError(start: string, end: string, cliff: string): string | undefined {

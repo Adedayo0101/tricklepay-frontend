@@ -28,6 +28,16 @@ export function toUnix(local: string): bigint {
 }
 
 /**
+ * Largest total, in base units, the contract accepts: i64::MAX. Anything above
+ * it reverts on-chain with AmountTooLarge (code 10), so the form rejects it
+ * first. Kept as a bigint literal — it is far beyond Number's safe range.
+ */
+export const MAX_AMOUNT_BASE_UNITS = 9_223_372_036_854_775_807n;
+
+/** MAX_AMOUNT_BASE_UNITS as a human amount, for messages and hints. */
+export const MAX_HUMAN_AMOUNT = "922337203685.4775807";
+
+/**
  * Parses a human decimal amount into 7-decimal base units (bigint).
  * Rejects non-positive numbers, scientific notation, negative numbers,
  * multiple decimal points, and amounts with more than 7 decimal places.
@@ -57,6 +67,10 @@ export function parseAmount(human: string): bigint {
 
   if (result <= 0n) {
     throw new Error("Amount must be greater than zero.");
+  }
+
+  if (result > MAX_AMOUNT_BASE_UNITS) {
+    throw new Error(`Amount cannot exceed ${MAX_HUMAN_AMOUNT}.`);
   }
 
   return result;

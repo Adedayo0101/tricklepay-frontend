@@ -95,6 +95,10 @@ describe("useCreateStreamForm", () => {
       typeof useRouter
     >);
 
+    // The end time is validated against the clock; pin it before the fixed
+    // dates the tests enter. Date.now only, so React's real timers keep running.
+    vi.spyOn(Date, "now").mockReturnValue(new Date("2026-08-27T09:00").getTime());
+
     container = document.createElement("div");
     document.body.appendChild(container);
     root = createRoot(container);

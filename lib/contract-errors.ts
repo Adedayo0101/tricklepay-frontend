@@ -14,6 +14,9 @@
 //    8  InsufficientBalance
 //    9  StreamAlreadyCompleted
 //   10  AmountTooLarge
+//   11  StreamWindowInPast
+//   12  StreamCountExhausted
+//   13  InvalidParticipant
 //
 // Code 2 was Unauthorized, removed from the contract as unreachable —
 // require_auth aborts before the contract can return it. It is still mapped
@@ -29,6 +32,9 @@ export const CONTRACT_ERROR_MESSAGES: Record<number, string> = {
   8: "That is more than you can withdraw right now.",
   9: "This stream has already completed and can no longer be cancelled.",
   10: "That amount is too large. The total must not exceed 9223372036854775807.",
+  11: "The stream's end time has already passed — choose an end time in the future.",
+  12: "No new streams can be created on this contract — it has run out of stream ids.",
+  13: "Invalid participants — the sender and recipient must be different accounts, and neither can be the token or the stream contract.",
 };
 
 export const GENERIC_FAILURE = "The transaction failed on-chain.";
