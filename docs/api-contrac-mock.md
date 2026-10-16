@@ -273,6 +273,9 @@ transaction) is surfaced to the SDK as a string containing an
 | 8 | `InsufficientBalance` | "That is more than you can withdraw right now." |
 | 9 | `StreamAlreadyCompleted` | "This stream has already completed and can no longer be cancelled." |
 | 10 | `AmountTooLarge` | "That amount is too large. The total must not exceed 9223372036854775807." |
+| 11 | `StreamWindowInPast` | "The stream's end time has already passed — choose an end time in the future." |
+| 12 | `StreamCountExhausted` | "No new streams can be created on this contract — it has run out of stream ids." |
+| 13 | `InvalidParticipant` | "Invalid participants — the sender and recipient must be different accounts, and neither can be the token or the stream contract." |
 
 This table mirrors `StreamError` in the contract's `error.rs` — if the
 contract adds, removes, or renumbers a variant, this table (and

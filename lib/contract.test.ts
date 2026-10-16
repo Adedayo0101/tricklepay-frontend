@@ -62,7 +62,7 @@ describe("contract error mapping", () => {
     // If the contract gains or drops a variant, this fails until the table
     // is updated — the mapping drifted out of sync once already.
     expect(Object.keys(CONTRACT_ERROR_MESSAGES).map(Number).sort((a, b) => a - b)).toEqual([
-      1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
+      1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,
     ]);
   });
 
