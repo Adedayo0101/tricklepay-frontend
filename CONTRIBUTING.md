@@ -32,7 +32,7 @@ TricklePay is a real-time, continuous token payment and streaming protocol built
 
 ---
 
-## 🚀 **Getting Started
+## 🚀 **Getting Started**
 
 ### Prerequisites
 
