@@ -200,7 +200,9 @@ what it deliberately does not.
 
 `NEXT_PUBLIC_CONTRACT_ID` is validated as the app boots, so a missing or
 malformed value stops it with a configuration error instead of failing at the
-first transaction.
+first transaction. `npm run build` fails the same way unless
+`NEXT_PUBLIC_MOCK_API=true`, because the id is inlined into the bundle at build
+time.
 
 ### Full local setup guide
 

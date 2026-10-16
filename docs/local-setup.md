@@ -103,6 +103,14 @@ first transaction:
 Configuration error: NEXT_PUBLIC_CONTRACT_ID is not set. Add it to your .env file (it starts with C).
 ```
 
+**A production build also requires it.** `NEXT_PUBLIC_*` values are inlined
+into the client bundle at build time, so a build without the id would ship a
+bundle that throws on load in every browser. `npm run build` therefore fails
+with `Build failed: NEXT_PUBLIC_CONTRACT_ID is not set` (see
+`lib/build-guard.ts`, called from `next.config.ts`) unless the id is set or
+`NEXT_PUBLIC_MOCK_API=true`. Development, mock mode and the unit tests are
+unaffected.
+
 The network passphrase is derived from `NEXT_PUBLIC_NETWORK` and is not
 configurable on its own — there is no variable to set for it.
 

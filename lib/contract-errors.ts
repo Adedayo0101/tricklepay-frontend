@@ -1,3 +1,5 @@
+import { config } from "@/lib/config";
+
 // Maps the numeric error codes emitted by the on-chain contract to plain-language
 // messages a user can act on. Codes not in this table fall back to a generic
 // message that still surfaces the raw code so users can report it.
@@ -40,6 +42,21 @@ export const CONTRACT_ERROR_MESSAGES: Record<number, string> = {
 export const GENERIC_FAILURE = "The transaction failed on-chain.";
 
 /**
+ * Shown when a contract other than the stream contract raised the error —
+ * in practice the token, whose transfer fails when the sender cannot cover the
+ * amount. Its error numbers are its own and overlap the stream table (the
+ * Stellar Asset Contract's BalanceError is 10, the stream's AmountTooLarge),
+ * so the stream messages must not be applied to them. The raw code is kept so
+ * users can report it.
+ */
+export function tokenFailureMessage(code: number): string {
+  return (
+    "The token contract rejected the transfer. Check that your balance covers " +
+    `the amount, then try again. (token error code ${code})`
+  );
+}
+
+/**
  * The Soroban host formats contract errors as "Error(Contract, #N)" in
  * diagnostic/simulation output and in thrown Error messages. This regex
  * captures the numeric code.
@@ -49,11 +66,36 @@ export const GENERIC_FAILURE = "The transaction failed on-chain.";
 const CONTRACT_ERROR_RE = /Error\(Contract,\s*#(\d+)\)/;
 
 /**
+ * A diagnostic event that names the contract it came from, e.g.
+ *   contract:CABC…, topics:[error, Error(Contract, #10)], data:…
+ * Captures the contract id and the error code. The headline "Error(Contract,
+ * #N)" of a simulation failure carries no contract id; the events do.
+ */
+const ATTRIBUTED_ERROR_EVENT_RE =
+  /contract:(C[A-Z2-7]{55}),\s*topics:\[[^\]]*?Error\(Contract,\s*#(\d+)\)/g;
+
+/**
+ * Id of the contract that raised `code`, read from the first (newest) matching
+ * diagnostic event, or null when the text does not say.
+ */
+function failingContractId(raw: string, code: number): string | null {
+  for (const event of raw.matchAll(ATTRIBUTED_ERROR_EVENT_RE)) {
+    if (parseInt(event[2], 10) === code) return event[1];
+  }
+  return null;
+}
+
+/**
  * Extracts a contract error code from any string that may contain a Soroban
  * "Error(Contract, #N)" token, then maps it to a user-facing message.
  *
  * Returns the generic failure message when no code can be found, or when the
  * code is not in the known table (appending the raw code for debuggability).
+ *
+ * The table describes the configured stream contract only. When the text shows
+ * the error came from another contract (a failed token transfer), its number
+ * means something else, so a token-specific message is returned instead.
+ * Text that does not say which contract failed is mapped as the stream's.
  *
  * @example
  * parseContractError("invocation trapped: Error(Contract, #7)")
@@ -71,5 +113,7 @@ export function parseContractError(raw: string): string {
   const match = CONTRACT_ERROR_RE.exec(raw);
   if (!match) return GENERIC_FAILURE;
   const code = parseInt(match[1], 10);
+  const failing = failingContractId(raw, code);
+  if (failing !== null && failing !== config.contractId) return tokenFailureMessage(code);
   return CONTRACT_ERROR_MESSAGES[code] ?? `${GENERIC_FAILURE} (error code ${code})`;
 }

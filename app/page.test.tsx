@@ -130,15 +130,33 @@ describe("Dashboard Page", () => {
     expect(htmlString).not.toContain("Loading incoming streams");
     expect(htmlString).not.toContain("Loading outgoing streams");
   });
-it("applies a persisted filter on mount", () => {
+  // Decision: the test was wrong, not the page. The page's `filter` parameter
+  // is a lifecycle status (pending, streaming, completed, cancelled) or "all";
+  // direction is already split into the Incoming and Outgoing sections, which
+  // always render together. This test used to load `?filter=outgoing`, a
+  // direction filter the page deliberately does not have (resolveFilter maps
+  // it to "all"), so it now uses a supported status filter instead.
+  it("applies a persisted filter on mount", () => {
     mockConnectedWithData();
-    searchParamsRef.current = new URLSearchParams("?filter=outgoing");
+    searchParamsRef.current = new URLSearchParams("?filter=streaming");
 
     const el = Home();
     const htmlString = renderToStaticMarkup(el);
 
-    expect(htmlString).toContain("Outgoing");
-    expect(htmlString).not.toContain("Incoming");
+    expect(useStreamPage).toHaveBeenCalledWith("recipient", expect.any(String), "streaming");
+    expect(useStreamPage).toHaveBeenCalledWith("sender", expect.any(String), "streaming");
+    expect(htmlString).toMatch(/aria-pressed="true"[^>]*>\s*Streaming/);
+    expect(htmlString).toContain('aria-label="Clear filter"');
+  });
+
+  it("treats an unsupported filter value as all", () => {
+    mockConnectedWithData();
+    searchParamsRef.current = new URLSearchParams("?filter=outgoing");
+
+    const htmlString = renderToStaticMarkup(Home());
+
+    expect(useStreamPage).toHaveBeenCalledWith("recipient", expect.any(String), "all");
+    expect(htmlString).not.toContain('aria-label="Clear filter"');
   });
 
   it("falls back to the default filter when no value is persisted", () => {

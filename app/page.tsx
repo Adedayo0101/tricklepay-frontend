@@ -11,9 +11,7 @@ import { TransactionNotice } from "@/components/transaction-notice";
 import { useWallet } from "@/components/wallet-provider";
 import { useNow } from "@/hooks/use-now";
 import { useStreamPage, type StreamPage } from "@/hooks/use-stream-page";
-import { streamsToCsv } from "@/lib/csv";
-import { downloadCsv } from "@/lib/csv-download";
-import { timeAgo } from "@/lib/format";
+import { formatStreamsTotal } from "@/lib/stream-total";
 import { takePendingNotice } from "@/lib/pending-notice";
 import type { PendingNotice } from "@/types/notice";
 import type { StreamStatus } from "@/types/stream";
@@ -50,6 +48,9 @@ function StreamSection({
   className?: string;
 }) {
   const visible = page.streams;
+  // Summed over the streams currently shown, which the active status filter
+  // has already narrowed, so the figure follows the filter.
+  const total = formatStreamsTotal(visible);
   // Re-render on an interval so a pending stream's "starts in …" countdown
   // in the lists keeps advancing while the absolute schedule stays on the
   // detail page. Card/table rows themselves stay pure.
@@ -128,6 +129,14 @@ function StreamSection({
           </button>
         </div>
       </div>
+
+      {!page.loading && (
+        <p className="mb-3 text-xs text-neutral-500">
+          <span className="sr-only">Total across visible streams. </span>
+          Total:{" "}
+          <span className="font-medium tabular-nums text-neutral-300">{total}</span>
+        </p>
+      )}
 
       {page.error && (
         <div className="mb-3 flex items-center gap-3">

@@ -2,7 +2,7 @@
 // invocation flow so the wait-and-retry behaviour (and its failure-string
 // parsing) can be tested without building or signing anything.
 
-import { rpc, xdr } from "@stellar/stellar-sdk";
+import { rpc, StrKey, xdr } from "@stellar/stellar-sdk";
 
 import { CONFIRM_POLL_ATTEMPTS, CONFIRM_POLL_INTERVAL_MS } from "@/lib/contract-config";
 import { parseContractError } from "@/lib/contract-errors";
@@ -77,10 +77,17 @@ export async function confirm(srv: rpc.Server, hash: string): Promise<string> {
  */
 function extractFailureString(result: rpc.Api.GetFailedTransactionResponse): string {
   if (result.diagnosticEventsXdr && result.diagnosticEventsXdr.length > 0) {
+    // Prefer an error event that names its contract, so parseContractError can
+    // tell a token's error from the stream contract's; host-emitted events
+    // carry no contract id.
+    let unattributed: string | null = null;
     for (const event of result.diagnosticEventsXdr) {
       const token = findContractErrorToken(event);
-      if (token) return token;
+      if (!token) continue;
+      if (token.startsWith("contract:")) return token;
+      unattributed ??= token;
     }
+    if (unattributed) return unattributed;
   }
   // Nothing actionable found; return an empty string so parseContractError
   // falls through to the generic message.
@@ -89,7 +96,9 @@ function extractFailureString(result: rpc.Api.GetFailedTransactionResponse): str
 
 /**
  * Inspects a single DiagnosticEvent for a contract error ScVal in its topics,
- * returning a synthetic "Error(Contract, #N)" string if one is found.
+ * returning a synthetic "Error(Contract, #N)" string if one is found. When the
+ * event names the contract that emitted it, the string is prefixed the way the
+ * RPC's own event log is ("contract:C…, topics:[error, Error(Contract, #N)]").
  *
  * A Soroban host error event has the structure:
  *   topics: [Symbol("error"), ScVal(scvError, ScError(sceContract, code: N))]
@@ -105,7 +114,10 @@ function findContractErrorToken(event: xdr.DiagnosticEvent): string | null {
       // contract-error arm is named "sceContract".
       if (scError.switch().name !== "sceContract") continue;
       const code = scError.contractCode();
-      return `Error(Contract, #${code})`;
+      const token = `Error(Contract, #${code})`;
+      const contractId = event.event().contractId();
+      if (!contractId) return token;
+      return `contract:${StrKey.encodeContract(contractId)}, topics:[error, ${token}]`;
     }
   } catch {
     // XDR traversal failed — the event shape was unexpected, skip it.

@@ -15,6 +15,16 @@ Example: `"25 of 142"` means 25 streams are visible and 142 exist for that
 role and filter combination. The "Load more" button remains available until the
 visible count equals the total.
 
+## Total across visible streams
+
+Below each section header the dashboard shows a labelled `Total:` line (with the
+accessible label "Total across visible streams"). It sums `totalAmount` over the
+streams currently shown in that section, grouped by token, using
+`formatStreamsTotal` from `lib/stream-total.ts` (for example `3.5 USDC`, or
+`0` when nothing is shown). Because the status filter narrows the streams
+returned by the backend, the total follows the active filter. It is hidden while
+the section is loading.
+
 ## How totals are computed
 
 The `total` figure comes from the backend's paginated response (`lib/api.ts`,
