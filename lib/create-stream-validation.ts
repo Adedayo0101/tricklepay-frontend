@@ -59,6 +59,9 @@ export function endFieldError(start: string, end: string): string | undefined {
   if (!end) return undefined;
   const endUnix = toUnix(end);
   if (start && endUnix <= toUnix(start)) return "End must be after start.";
+  // Reads the clock on every call so an end time that was valid when typed is
+  // caught again at submit if it has since fallen into the past, matching the
+  // contract's StreamWindowInPast check instead of only comparing to start (#401).
   const nowUnix = BigInt(Math.floor(Date.now() / 1000));
   return endUnix <= nowUnix ? "End must be in the future." : undefined;
 }
