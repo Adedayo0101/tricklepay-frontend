@@ -27,6 +27,12 @@ function validStream(overrides: Record<string, unknown> = {}) {
   };
 }
 
+function omit(source: Record<string, unknown>, key: string): Record<string, unknown> {
+  const copy = { ...source };
+  delete copy[key];
+  return copy;
+}
+
 describe("parseStreamView", () => {
   it("returns the payload unchanged when it matches the contract", () => {
     const stream = validStream();
@@ -34,7 +40,7 @@ describe("parseStreamView", () => {
   });
 
   it("accepts a payload without the optional cancelled flag", () => {
-    const { cancelled: _cancelled, ...withoutFlag } = validStream();
+    const withoutFlag = omit(validStream(), "cancelled");
     expect(() => parseStreamView(withoutFlag)).not.toThrow();
   });
 
@@ -44,7 +50,7 @@ describe("parseStreamView", () => {
   });
 
   it("rejects a missing string field and names it", () => {
-    const { recipient: _recipient, ...withoutRecipient } = validStream();
+    const withoutRecipient = omit(validStream(), "recipient");
     expect(() => parseStreamView(withoutRecipient)).toThrow(
       /response\.recipient must be a string/,
     );

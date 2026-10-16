@@ -51,7 +51,7 @@ describe("RootLayout", () => {
 });
 
 describe("Theme Bootstrap Script", () => {
-  let originalMatchMedia: any;
+  let originalMatchMedia: Window["matchMedia"];
 
   beforeEach(() => {
     document.documentElement.className = "";
@@ -70,7 +70,6 @@ describe("Theme Bootstrap Script", () => {
     if (!scriptMatch) throw new Error("Could not find bootstrap script");
     
     // Evaluate the inline script string directly in this JSDOM context
-    // eslint-disable-next-line no-eval
     eval(scriptMatch[1]);
   }
 
