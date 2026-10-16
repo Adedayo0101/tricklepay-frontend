@@ -9,7 +9,9 @@ import { THEME_STORAGE_KEY } from "@/lib/theme";
 
 import "./globals.css";
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://tricklepay.xyz";
+// No hard-coded fallback domain: an unset NEXT_PUBLIC_APP_URL should not
+// silently point canonical/social metadata at a URL we don't control.
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL;
 
 // Applies the persisted (or OS-preferred) theme to <html> synchronously,
 // before hydration, so there is no flash of the wrong theme on first paint.
@@ -47,7 +49,7 @@ export const metadata: Metadata = {
   },
   description:
     "TricklePay lets you stream token payments on Stellar in real time — create, manage, and withdraw from vesting streams without leaving your browser.",
-  metadataBase: new URL(APP_URL),
+  metadataBase: APP_URL ? new URL(APP_URL) : null,
   openGraph: {
     type: "website",
     url: "/",
