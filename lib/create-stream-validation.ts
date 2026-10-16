@@ -1,3 +1,4 @@
+import { durationFieldError } from "@/lib/duration";
 import { isValidContractAddress, isValidStellarAddress, parseAmount, toUnix } from "@/lib/validation";
 import type { FormDraft } from "@/types/form";
 
@@ -84,5 +85,9 @@ export function validateCreateStreamForm(values: FormDraft): CreateStreamFieldEr
     start: requiredFieldError("start", start),
     end: requiredFieldError("end", end) ?? endFieldError(start, end),
     cliff: cliffFieldError(start, end, cliff),
+    // Duration never reaches the transaction directly — it only ever fills
+    // `end` — but an error left showing on screen at submit time would be
+    // confusing, so it blocks submission the same as every other field.
+    durationAmount: durationFieldError(values.durationAmount),
   };
 }

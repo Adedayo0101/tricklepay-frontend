@@ -19,6 +19,7 @@ field by field, with the exact message you see for each failure.
 |---|---|
 | `lib/create-stream-validation.ts` | The per-field rules and the required-field messages for this form, plus `validateCreateStreamForm`, which composes them. |
 | `lib/validation.ts` | The underlying checks: `isValidStellarAddress`, `isValidContractAddress`, `parseAmount`, and `toUnix`. Shared with the rest of the app. |
+| `lib/duration.ts` | The Duration shortcut's own rule (`durationFieldError`) and the calendar arithmetic that turns it into an end time (`addDurationToLocal`). |
 | `hooks/use-create-stream-form.ts` | Calls the rules as you type, and re-runs the whole set on submit. |
 | `components/create-stream-fields.tsx` | Renders each message under its input, with `aria-invalid` on the field. |
 
@@ -36,8 +37,8 @@ both are judged relative to the window.
 **On submit.** Pressing "Review stream" re-runs the complete set through
 `validateCreateStreamForm`, so a stale live message can never disagree with what
 is accepted. If anything fails, nothing is sent to the wallet: the first invalid
-field in screen order — `recipient`, `token`, `amount`, `start`, `end`, `cliff` —
-is focused and the review step does not open.
+field in screen order — `recipient`, `token`, `amount`, `start`, the Duration
+shortcut, `end`, `cliff` — is focused and the review step does not open.
 
 **The empty-field exception.** Clearing `recipient`, `token`, or `amount` does
 *not* raise a "required" message while you are still typing — the field simply
@@ -107,6 +108,34 @@ Details:
 Shown as soon as the field is cleared. The value comes from a `datetime-local`
 input in **your** local timezone, and the field shows its UTC equivalent
 underneath so you can check it against the stream you intend.
+
+### Duration (optional)
+
+A shortcut, not a field the transaction reads: it only ever fills in `end` from
+`start`. Disabled until `start` is filled in.
+
+| Rule | Message | Example that triggers it |
+|---|---|---|
+| If present, must be a whole number | `Duration must be a whole number (e.g. 30).` | `abc`, `1.5`, `-5`, `1e3` |
+| Must be greater than zero | `Duration must be greater than zero.` | `0` |
+
+Details:
+
+- **Two-way sync with End.** Entering "30" + "Days" sets `end` to 30 days after `start`.
+  Conversely, editing `end` directly afterwards recalculates the displayed
+  Duration to match the new window (matching years, months, weeks, or days),
+  keeping both controls in sync.
+- **Stays in sync with a moving start.** If `start` changes while a valid
+  duration is set, `end` is recomputed from the new `start` — so moving the
+  window doesn't leave a stale `end` that no longer matches the duration shown.
+- **Calendar arithmetic for months and years.** "1 month" uses the JS `Date`
+  object's own `setMonth`, not a fixed 30-day approximation — so it lands on
+  the same day next month, with that method's usual day-overflow (adding 1
+  month to Jan 31 lands on Mar 3, since February has no 31st).
+- **Blocks submission like any other field.** It never reaches the
+  transaction — only the `end` it computed does — but an error left showing on
+  screen at submit time would be confusing, so an invalid duration still stops
+  submission the same as every other field.
 
 ### End
 

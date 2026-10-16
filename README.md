@@ -71,7 +71,9 @@ See also [Running locally](#running-locally) for the short version,
   every second client-side, using the same linear vesting math as the contract,
   so it climbs in real time without polling.
 - **Create** a stream with a recipient, token, amount, time window, and optional
-  cliff.
+  cliff. The schedule can be populated instantly with presets (1 month linear,
+  1 year with 3-month cliff, 4 years with 1-year cliff) or a duration shortcut
+  (e.g. "30 Days") that stays in sync with the end time.
 - **Withdraw** as the recipient and **cancel** as the sender, each built, signed,
   submitted, and confirmed on-chain with step-by-step transaction progress stages (Preparing -> Sign -> Submit -> Confirm).
 - **Duplicate submission protection** — in-flight invocation guards in contract utilities and components prevent double-submitting active transactions.
@@ -81,6 +83,8 @@ See also [Running locally](#running-locally) for the short version,
 - **Keyboard focus visibility** — every interactive element gets a consistent, high-contrast focus ring when navigated to via keyboard (`:focus-visible` in `app/globals.css`), independent of any per-component focus styling.
 - **Reduced-motion support** — visitors with the OS-level "reduce motion" preference enabled get all animations and transitions (skeleton shimmer, spinners, progress pulses, hover/focus transitions) collapsed to a single frame, app-wide (`prefers-reduced-motion` in `app/globals.css`).
 - **Light theme toggle** — a header button flips the whole app between dark (default) and light, persisted in `localStorage` and applied before first paint to avoid a flash of the wrong theme. See `components/theme-toggle.tsx`, `components/theme-provider.tsx`, and `lib/theme.ts`.
+- **Freshness indicator** — each dashboard list shows "Updated N seconds/minutes/hours ago" next to its Refresh button, from the timestamp of that list's own last successful fetch (`hooks/use-stream-page.ts`'s `lastUpdated`). It ticks as time passes, updates immediately after any refresh (manual, background, or load-more), and is in a polite live region so the elapsed time is announced to assistive technology without interrupting.
+- **CSV export** — "Export CSV" next to each dashboard list downloads the currently visible streams (respecting the active filter) as a spreadsheet, built client-side with no server call. Amounts and times are written as exact strings (`lib/csv.ts`, `lib/format.ts`, `lib/timezone.ts`), never through `Number()`, so a balance beyond `Number.MAX_SAFE_INTEGER` is never silently rounded.
 - **Branded loading indicator** — indeterminate loading states (route transitions, wallet connect) use `components/brand-spinner.tsx`, three bouncing indigo dots echoing the trickle-drop mark in `app/icon.svg`, instead of a generic spinner. Content-shaped loading (stream lists, stream detail) keeps the existing skeletons in `components/skeleton.tsx`. Every view renders either one through the shared `components/loading-state.tsx`, so loading is announced to screen readers the same way everywhere.
 
 ## Stack
@@ -387,7 +391,11 @@ lib/
   vesting.ts            linear vesting math, mirroring the contract
   format.ts             amount, address and time-span formatting
   schedule.ts           start/end/cliff/remaining text shared by every view
+  csv.ts                builds the dashboard's CSV export (pure, no DOM)
+  csv-download.ts       triggers the browser download for that CSV
   create-stream-validation.ts create-form field validation rules
+  duration.ts           the create-form's duration shortcut: validation + calendar arithmetic
+  schedule-presets.ts   named schedule presets (1 month linear, 1 year cliff, etc.)
   create-form-draft.ts  create-form draft persistence
   stream-actions.ts     who may cancel, and why withdrawal is blocked
   theme.ts              pure light/dark theme resolution logic

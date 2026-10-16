@@ -11,6 +11,8 @@ const validDraft: FormDraft = {
   start: "2026-08-27T10:00",
   end: "2026-08-27T12:00",
   cliff: "",
+  durationAmount: "",
+  durationUnit: "days",
 };
 
 // The end time is checked against the clock, so every test runs at a fixed
@@ -113,5 +115,26 @@ describe("endFieldError against the current clock", () => {
     expect(endFieldError("2026-08-27T11:30:00", "2026-08-27T11:00:00")).toBe(
       "End must be after start.",
     );
+  });
+});
+
+describe("validateCreateStreamForm — duration", () => {
+  it("passes a complete form with no duration entered", () => {
+    expect(validateCreateStreamForm(validDraft).durationAmount).toBeUndefined();
+  });
+
+  it("blocks submission on an invalid duration even though every other field is valid", () => {
+    expect(
+      validateCreateStreamForm({ ...validDraft, durationAmount: "0" }).durationAmount,
+    ).toBe("Duration must be greater than zero.");
+    expect(
+      validateCreateStreamForm({ ...validDraft, durationAmount: "abc" }).durationAmount,
+    ).toBe("Duration must be a whole number (e.g. 30).");
+  });
+
+  it("passes a valid duration", () => {
+    expect(
+      validateCreateStreamForm({ ...validDraft, durationAmount: "30" }).durationAmount,
+    ).toBeUndefined();
   });
 });

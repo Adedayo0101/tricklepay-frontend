@@ -56,6 +56,7 @@ function mockDisconnected() {
     error: null,
     refresh: vi.fn(),
     loadMore: vi.fn(),
+    lastUpdated: null,
   });
 }
 
@@ -95,6 +96,7 @@ function mockConnectedWithData() {
     error: null,
     refresh: vi.fn(),
     loadMore: vi.fn(),
+    lastUpdated: null,
   });
 }
 
@@ -180,6 +182,7 @@ it("applies a persisted filter on mount", () => {
         error: null,
         refresh: vi.fn(),
         loadMore: vi.fn(),
+        lastUpdated: null,
       });
 
       const el = Home();

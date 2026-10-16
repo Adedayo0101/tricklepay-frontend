@@ -195,3 +195,37 @@ export function formatDuration(seconds: bigint): string | null {
   if (seconds <= 0n) return null;
   return formatSpan(Number(seconds));
 }
+
+/**
+ * A short "time ago" label for a past instant, e.g. for "Updated {timeAgo(...)}"
+ * next to a refresh action. Granularity coarsens with distance so the label
+ * stays readable, and never goes negative (a clock briefly behind the
+ * timestamp it is measuring reads as "just now", not "-1 seconds ago").
+ *
+ * @param pastMs - The instant to describe, in epoch milliseconds.
+ * @param nowMs - The instant to measure from. Defaults to `Date.now()`; pass
+ *   it explicitly to keep a caller's own render consistent with a ticking
+ *   clock it already reads from elsewhere (e.g. useNow()).
+ *
+ * @example
+ *   timeAgo(Date.now() - 2_000)       → "just now"
+ *   timeAgo(Date.now() - 12_000)      → "12 seconds ago"
+ *   timeAgo(Date.now() - 90_000)      → "1 minute ago"
+ *   timeAgo(Date.now() - 2 * 3600_000) → "2 hours ago"
+ */
+export function timeAgo(pastMs: number, nowMs: number = Date.now()): string {
+  const seconds = Math.max(0, Math.floor((nowMs - pastMs) / MS_PER_SECOND));
+  const plural = (n: number) => (n === 1 ? "" : "s");
+
+  if (seconds < 5) return "just now";
+  if (seconds < SECONDS_PER_MINUTE) return `${seconds} second${plural(seconds)} ago`;
+
+  const minutes = Math.floor(seconds / SECONDS_PER_MINUTE);
+  if (minutes < 60) return `${minutes} minute${plural(minutes)} ago`;
+
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours} hour${plural(hours)} ago`;
+
+  const days = Math.floor(hours / 24);
+  return `${days} day${plural(days)} ago`;
+}

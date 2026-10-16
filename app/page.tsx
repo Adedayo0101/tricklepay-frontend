@@ -11,6 +11,9 @@ import { TransactionNotice } from "@/components/transaction-notice";
 import { useWallet } from "@/components/wallet-provider";
 import { useNow } from "@/hooks/use-now";
 import { useStreamPage, type StreamPage } from "@/hooks/use-stream-page";
+import { streamsToCsv } from "@/lib/csv";
+import { downloadCsv } from "@/lib/csv-download";
+import { timeAgo } from "@/lib/format";
 import { takePendingNotice } from "@/lib/pending-notice";
 import type { PendingNotice } from "@/types/notice";
 import type { StreamStatus } from "@/types/stream";
@@ -51,6 +54,10 @@ function StreamSection({
   // in the lists keeps advancing while the absolute schedule stays on the
   // detail page. Card/table rows themselves stay pure.
   useNow();
+  // A second, faster tick just for the "Updated …" freshness label below —
+  // the countdown tick above is intentionally coarse (30s; see useNow's own
+  // comment), too slow to show a last-fetch time climbing second by second.
+  const now = useNow(5_000);
   const emptyText =
     filter === "all" || page.streams.length === 0
       ? (filter === "all" ? emptyMessage : `No ${filter} streams found.`)
@@ -66,6 +73,11 @@ function StreamSection({
           {page.total > 0 && (
             <p className="text-xs tabular-nums text-neutral-500">
               {page.streams.length} of {page.total}
+            </p>
+          )}
+          {page.lastUpdated !== null && (
+            <p role="status" aria-live="polite" className="text-xs text-neutral-500">
+              Updated {timeAgo(page.lastUpdated, now)}
             </p>
           )}
           <button
@@ -89,6 +101,30 @@ function StreamSection({
               />
             </svg>
             Refresh
+          </button>
+          <button
+            onClick={() =>
+              downloadCsv(
+                `tricklepay-${title.toLowerCase()}-streams.csv`,
+                streamsToCsv(page.streams),
+              )
+            }
+            disabled={page.streams.length === 0}
+            aria-label={`Export ${title.toLowerCase()} streams as CSV`}
+            className="inline-flex items-center gap-1 rounded border border-neutral-800 px-2 py-0.5 text-xs text-neutral-500 hover:border-neutral-600 hover:text-neutral-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-400 focus-visible:ring-offset-1 disabled:opacity-40"
+          >
+            {/* download icon */}
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 16 16"
+              fill="currentColor"
+              aria-hidden="true"
+              className="h-3 w-3"
+            >
+              <path d="M8 1.75a.75.75 0 0 1 .75.75v6.19l1.72-1.72a.75.75 0 1 1 1.06 1.06l-3 3a.75.75 0 0 1-1.06 0l-3-3a.75.75 0 1 1 1.06-1.06l1.72 1.72V2.5A.75.75 0 0 1 8 1.75Z" />
+              <path d="M2.5 9.75A.75.75 0 0 1 3.25 9h.5a.75.75 0 0 1 0 1.5h-.25v2.5h9v-2.5h-.25a.75.75 0 0 1 0-1.5h.5a.75.75 0 0 1 .75.75v3.5a.75.75 0 0 1-.75.75h-10.5a.75.75 0 0 1-.75-.75v-3.5Z" />
+            </svg>
+            Export CSV
           </button>
         </div>
       </div>

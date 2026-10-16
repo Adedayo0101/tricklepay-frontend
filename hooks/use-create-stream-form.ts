@@ -23,8 +23,10 @@ import {
   tokenFieldError,
   validateCreateStreamForm,
 } from "@/lib/create-stream-validation";
+import { addDurationToLocal, deriveDuration, durationFieldError, isDurationUnit } from "@/lib/duration";
 import { formatDuration } from "@/lib/format";
 import { setPendingNotice } from "@/lib/pending-notice";
+import { applySchedulePreset, SCHEDULE_PRESETS } from "@/lib/schedule-presets";
 import { parseAmount, toUnix } from "@/lib/validation";
 import { vestingRatePerDay } from "@/lib/vesting";
 import type { CreateStreamParams, TxStage } from "@/types/contract";
@@ -32,7 +34,11 @@ import type { FormDraft } from "@/types/form";
 
 export type CreateFormField = keyof FormDraft;
 export type CreateFormErrors = Partial<Record<CreateFormField, string>>;
-export type CreateFormRefs = Record<CreateFormField, RefObject<HTMLInputElement | null>>;
+// Excludes durationUnit: it's a <select> that is always one of a fixed set of
+// options, never free text, so unlike every other field it has no error state
+// and nothing ever needs to focus it.
+export type FocusableCreateFormField = Exclude<CreateFormField, "durationUnit">;
+export type CreateFormRefs = Record<FocusableCreateFormField, RefObject<HTMLInputElement | null>>;
 
 /** Everything CreateForm needs from useCreateStreamForm. */
 export interface CreateStreamForm {
@@ -41,6 +47,8 @@ export interface CreateStreamForm {
   errors: CreateFormErrors;
   refs: CreateFormRefs;
   setField: (field: CreateFormField, value: string) => void;
+  /** Fills start/end/cliff from a named preset — see lib/schedule-presets.ts. */
+  applyPreset: (presetId: string) => void;
   previewRate: bigint | null;
   previewDuration: string | null;
   addressesValid: boolean;
@@ -58,7 +66,15 @@ export interface CreateStreamForm {
 
 // Fields in on-screen order, which is also the order the first invalid one is
 // searched for on submit. Cliff is the only optional field.
-const FIELD_ORDER: CreateFormField[] = ["recipient", "token", "amount", "start", "end", "cliff"];
+const FIELD_ORDER: FocusableCreateFormField[] = [
+  "recipient",
+  "token",
+  "amount",
+  "start",
+  "durationAmount",
+  "end",
+  "cliff",
+];
 
 /**
  * Owns the create-stream form's data handling: field values (persisted as a
@@ -92,12 +108,34 @@ export function useCreateStreamForm(): CreateStreamForm {
     start: useRef<HTMLInputElement>(null),
     end: useRef<HTMLInputElement>(null),
     cliff: useRef<HTMLInputElement>(null),
+    durationAmount: useRef<HTMLInputElement>(null),
   };
 
-  const { recipient, token, amount, start, end, cliff } = values;
+  const { recipient, token, amount, start, end, cliff, durationAmount, durationUnit } = values;
 
   function setFieldErrors(next: CreateFormErrors) {
     setErrors((prev) => ({ ...prev, ...next }));
+  }
+
+  // Fills `end` from `nextStart` + a duration, when the duration is a
+  // complete, valid value — the shortcut that drives `end`, one direction
+  // only. Called whenever start, durationAmount, or durationUnit changes, so
+  // the filled-in end always matches the most recently entered duration.
+  // Returns whether it actually applied, so callers can skip re-validating
+  // `end` against a value this is about to replace anyway.
+  function applyDurationIfSet(nextStart: string, nextAmount: string, nextUnit: string): boolean {
+    if (!isDurationUnit(nextUnit) || durationFieldError(nextAmount) || !nextAmount) {
+      return false;
+    }
+    const computedEnd = addDurationToLocal(nextStart, nextAmount, nextUnit);
+    if (computedEnd === null) return false;
+
+    setValues((prev) => ({ ...prev, end: computedEnd }));
+    setFieldErrors({
+      end: endFieldError(nextStart, computedEnd),
+      ...(cliff ? { cliff: cliffFieldError(nextStart, computedEnd, cliff) } : {}),
+    });
+    return true;
   }
 
   // Updates one field and re-runs the validation that depends on it, including
@@ -114,27 +152,96 @@ export function useCreateStreamForm(): CreateStreamForm {
       case "amount":
         setFieldErrors({ amount: amountFieldError(value) });
         break;
-      case "start":
+      case "start": {
+        // A duration already set takes over filling `end` for the new start;
+        // only fall back to checking it against the unchanged end value when
+        // there is no duration to reapply.
+        const applied = applyDurationIfSet(value, durationAmount, durationUnit);
+        const endErr = !applied && value && end ? endFieldError(value, end) : undefined;
         setFieldErrors({
           start: value ? undefined : CREATE_STREAM_REQUIRED_MESSAGES.start,
-          ...(value && end ? { end: endFieldError(value, end) } : {}),
-          ...(value && cliff ? { cliff: cliffFieldError(value, end, cliff) } : {}),
+          ...(!applied && value && end ? { end: endErr } : {}),
+          ...(!applied && value && cliff ? { cliff: cliffFieldError(value, end, cliff) } : {}),
         });
+        if (!applied && value && end && !endErr) {
+          const derived = deriveDuration(value, end, durationUnit);
+          if (derived) {
+            setValues((prev) => ({
+              ...prev,
+              durationAmount: derived.amount,
+              durationUnit: derived.unit,
+            }));
+            setFieldErrors({ durationAmount: undefined });
+          }
+        }
         break;
-      case "end":
+      }
+      case "end": {
         if (!value) {
-          setFieldErrors({ end: CREATE_STREAM_REQUIRED_MESSAGES.end });
+          setFieldErrors({
+            end: CREATE_STREAM_REQUIRED_MESSAGES.end,
+            durationAmount: undefined,
+          });
+          setValues((prev) => ({ ...prev, durationAmount: "" }));
           break;
         }
+        const endErr = start ? endFieldError(start, value) : undefined;
         setFieldErrors({
-          end: endFieldError(start, value),
+          end: endErr,
           ...(cliff ? { cliff: cliffFieldError(start, value, cliff) } : {}),
         });
+        if (start && !endErr) {
+          const derived = deriveDuration(start, value, durationUnit);
+          if (derived) {
+            setValues((prev) => ({
+              ...prev,
+              durationAmount: derived.amount,
+              durationUnit: derived.unit,
+            }));
+            setFieldErrors({ durationAmount: undefined });
+          }
+        }
         break;
+      }
       case "cliff":
         setFieldErrors({ cliff: value ? cliffFieldError(start, end, value) : undefined });
         break;
+      case "durationAmount":
+        setFieldErrors({ durationAmount: durationFieldError(value) });
+        applyDurationIfSet(start, value, durationUnit);
+        break;
+      case "durationUnit":
+        applyDurationIfSet(start, durationAmount, value);
+        break;
     }
+  }
+
+  // Fills start/end/cliff from a named preset in one go. Recipient, token,
+  // and amount are never touched — presets are purely a schedule shortcut.
+  // Keeps an already-entered start rather than overwriting it, so applying a
+  // preset after picking a start date schedules from that date, not from now.
+  function applyPreset(presetId: string) {
+    const preset = SCHEDULE_PRESETS.find((p) => p.id === presetId);
+    if (!preset) return;
+
+    const applied = applySchedulePreset(preset, start);
+    if (!applied) return;
+
+    const cliffValue = applied.cliff ?? "";
+    setValues((prev) => ({
+      ...prev,
+      start: applied.start,
+      end: applied.end,
+      cliff: cliffValue,
+      durationAmount: preset.duration.amount,
+      durationUnit: preset.duration.unit,
+    }));
+    setFieldErrors({
+      start: undefined,
+      end: endFieldError(applied.start, applied.end),
+      cliff: cliffFieldError(applied.start, applied.end, cliffValue),
+      durationAmount: undefined,
+    });
   }
 
   const addressesValid =
@@ -154,9 +261,13 @@ export function useCreateStreamForm(): CreateStreamForm {
       ? formatDuration(toUnix(end) - toUnix(start))
       : null;
 
+  // durationUnit is excluded: a <select> always has a value ("days" by
+  // default), so unlike every other field it is never meaningfully "empty".
   const hasUnsavedChanges =
     prepared !== null ||
-    Object.values(values).some((value) => value.trim().length > 0);
+    [recipient, token, amount, start, end, cliff, durationAmount].some(
+      (value) => value.trim().length > 0,
+    );
 
   // When the form was populated from a stored draft, let the user know that
   // their work is safe: the draft stays in storage even if they navigate away.
@@ -167,8 +278,13 @@ export function useCreateStreamForm(): CreateStreamForm {
 
   useFormNavigationWarning(hasUnsavedChanges && !submitting, navigationMessage);
   useEffect(() => {
-    const draft = { recipient, token, amount, start, end, cliff };
-    const hasAnyValue = Object.values(draft).some((value) => value.trim().length > 0);
+    const draft = { recipient, token, amount, start, end, cliff, durationAmount, durationUnit };
+    // durationUnit always has a value (a <select> defaults to "days"), so it
+    // alone never counts as "something was entered" — only durationAmount does.
+    const hasAnyValue =
+      [recipient, token, amount, start, end, cliff, durationAmount].some(
+        (value) => value.trim().length > 0,
+      );
 
     if (!hasAnyValue) {
       clearFormDraft();
@@ -176,7 +292,7 @@ export function useCreateStreamForm(): CreateStreamForm {
     }
 
     writeFormDraft(draft);
-  }, [amount, cliff, end, recipient, start, token]);
+  }, [amount, cliff, durationAmount, durationUnit, end, recipient, start, token]);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -269,6 +385,7 @@ export function useCreateStreamForm(): CreateStreamForm {
     errors,
     refs,
     setField,
+    applyPreset,
     previewRate,
     previewDuration,
     addressesValid,

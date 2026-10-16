@@ -1,3 +1,6 @@
+/* @vitest-environment jsdom */
+
+import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import type { CreateFormRefs } from "@/hooks/use-create-stream-form";
@@ -13,6 +16,8 @@ describe("CreateStreamFields", () => {
       start: "",
       end: "",
       cliff: "",
+      durationAmount: "",
+      durationUnit: "days",
     },
     errors: {},
     refs: {
@@ -22,8 +27,10 @@ describe("CreateStreamFields", () => {
       start: { current: null },
       end: { current: null },
       cliff: { current: null },
+      durationAmount: { current: null },
     } as CreateFormRefs,
     onFieldChange: vi.fn(),
+    onApplyPreset: vi.fn(),
     previewRate: null,
     previewDuration: null,
     feedback: null,
@@ -45,6 +52,37 @@ describe("CreateStreamFields", () => {
     expect(renderedOutput).toContain("Cliff");
   });
 
+  // DurationField is a child component CreateStreamFields doesn't invoke
+  // itself — calling CreateStreamFields as a plain function (as the tests
+  // above do) leaves it as an unexpanded element, so its own rendered text
+  // never reaches that JSON. A real render is needed to see it.
+  describe("the duration shortcut", () => {
+    it("is present, labelled, and disabled until a start time is entered", () => {
+      render(<CreateStreamFields {...defaultProps} />);
+
+      // getByText/getByPlaceholderText/getByLabelText already throw if the
+      // element isn't in the document, so finding them is itself the
+      // presence assertion — no jest-dom matcher needed.
+      expect(screen.getByText("Duration (optional)")).toBeTruthy();
+      expect(screen.getByText("Fill in Start to use this.")).toBeTruthy();
+      expect(screen.getByPlaceholderText("30").hasAttribute("disabled")).toBe(true);
+      expect(screen.getByLabelText("Duration unit").hasAttribute("disabled")).toBe(true);
+    });
+
+    it("is enabled once a start time is entered", () => {
+      render(
+        <CreateStreamFields
+          {...defaultProps}
+          values={{ ...defaultProps.values, start: "2026-08-27T10:00" }}
+        />,
+      );
+
+      expect(screen.getByText(/Sets End from Start/)).toBeTruthy();
+      expect(screen.getByPlaceholderText("30").hasAttribute("disabled")).toBe(false);
+      expect(screen.getByLabelText("Duration unit").hasAttribute("disabled")).toBe(false);
+    });
+  });
+
   it("marks the cliff field specifically as optional", () => {
     const element = CreateStreamFields(defaultProps);
     const renderedOutput = JSON.stringify(element);
@@ -58,5 +96,27 @@ describe("CreateStreamFields", () => {
     expect(renderedOutput).not.toContain("Amount (optional)");
     expect(renderedOutput).not.toContain("Start (optional)");
     expect(renderedOutput).not.toContain("End (optional)");
+  });
+
+  describe("schedule presets", () => {
+    it("renders the preset buttons and triggers onApplyPreset on click", () => {
+      const onApplyPreset = vi.fn();
+      render(<CreateStreamFields {...defaultProps} onApplyPreset={onApplyPreset} />);
+
+      expect(screen.getByRole("group", { name: "Schedule presets" })).toBeTruthy();
+      const monthBtn = screen.getByRole("button", { name: "1 month, linear" });
+      const yearBtn = screen.getByRole("button", { name: "1 year, 3-month cliff" });
+      const fourYearsBtn = screen.getByRole("button", { name: "4 years, 1-year cliff" });
+
+      expect(monthBtn).toBeTruthy();
+      expect(yearBtn).toBeTruthy();
+      expect(fourYearsBtn).toBeTruthy();
+
+      fireEvent.click(monthBtn);
+      expect(onApplyPreset).toHaveBeenCalledWith("one-month-linear");
+
+      fireEvent.click(yearBtn);
+      expect(onApplyPreset).toHaveBeenCalledWith("one-year-three-month-cliff");
+    });
   });
 });

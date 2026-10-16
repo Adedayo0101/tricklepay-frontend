@@ -10,4 +10,11 @@ export type FormDraft = {
   start: string;
   end: string;
   cliff: string;
+  /**
+   * A shortcut that fills `end` from `start`: "30" + durationUnit "days" sets
+   * end to 30 days after start. Stays in sync with `end` — editing `end`
+   * directly re-calculates the displayed duration. See lib/duration.ts.
+   */
+  durationAmount: string;
+  durationUnit: string;
 };

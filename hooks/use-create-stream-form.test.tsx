@@ -221,6 +221,145 @@ describe("useCreateStreamForm", () => {
     addSpy.mockRestore();
   });
 
+  it("sets the end time from the start when a duration is entered", async () => {
+    await renderForm();
+
+    await act(async () => {
+      latest.setField("start", "2026-08-27T10:00");
+    });
+    await act(async () => {
+      latest.setField("durationAmount", "30");
+    });
+
+    // durationUnit defaults to "days".
+    expect(latest.values.end).toBe("2026-09-26T10:00");
+    expect(latest.errors.durationAmount).toBeUndefined();
+  });
+
+  it("recomputes the end time when the duration unit changes", async () => {
+    await renderForm();
+
+    await act(async () => {
+      latest.setField("start", "2026-08-27T10:00");
+    });
+    await act(async () => {
+      latest.setField("durationAmount", "2");
+    });
+    await act(async () => {
+      latest.setField("durationUnit", "weeks");
+    });
+
+    expect(latest.values.end).toBe("2026-09-10T10:00");
+  });
+
+  it("moves the end time with the start when a duration is already set", async () => {
+    await renderForm();
+
+    await act(async () => {
+      latest.setField("start", "2026-08-27T10:00");
+    });
+    await act(async () => {
+      latest.setField("durationAmount", "1");
+    });
+    await act(async () => {
+      latest.setField("durationUnit", "months");
+    });
+    expect(latest.values.end).toBe("2026-09-27T10:00");
+
+    // Moving start re-applies the same duration rather than leaving end stale.
+    await act(async () => {
+      latest.setField("start", "2026-09-01T10:00");
+    });
+    expect(latest.values.end).toBe("2026-10-01T10:00");
+  });
+
+  it("updates the displayed duration when the end time is edited directly", async () => {
+    await renderForm();
+
+    await act(async () => {
+      latest.setField("start", "2026-08-27T10:00");
+    });
+    await act(async () => {
+      latest.setField("end", "2026-08-29T10:00");
+    });
+    expect(latest.previewDuration).toBe("2d 0h");
+
+    // Editing end directly afterwards does not touch what was typed into the
+    // duration shortcut — it only ever drives end, never the other way.
+    await act(async () => {
+      latest.setField("end", "2026-09-03T16:00");
+    });
+    expect(latest.previewDuration).toBe("7d 6h");
+  });
+
+  it("shows an error for a duration that is not a positive whole number", async () => {
+    await renderForm();
+
+    await act(async () => {
+      latest.setField("start", "2026-08-27T10:00");
+    });
+
+    await act(async () => {
+      latest.setField("durationAmount", "abc");
+    });
+    expect(latest.errors.durationAmount).toBe("Duration must be a whole number (e.g. 30).");
+
+    await act(async () => {
+      latest.setField("durationAmount", "0");
+    });
+    expect(latest.errors.durationAmount).toBe("Duration must be greater than zero.");
+
+    await act(async () => {
+      latest.setField("durationAmount", "-5");
+    });
+    expect(latest.errors.durationAmount).toBe("Duration must be a whole number (e.g. 30).");
+
+    await act(async () => {
+      latest.setField("durationAmount", "2.5");
+    });
+    expect(latest.errors.durationAmount).toBe("Duration must be a whole number (e.g. 30).");
+  });
+
+  it("blocks submission on an invalid duration, even though it never reaches the transaction", async () => {
+    await renderForm();
+
+    await act(async () => {
+      latest.setField("recipient", RECIPIENT);
+    });
+    await act(async () => {
+      latest.setField("token", TOKEN);
+    });
+    await act(async () => {
+      latest.setField("amount", "12.5");
+    });
+    await act(async () => {
+      latest.setField("start", "2026-08-27T10:00");
+    });
+    await act(async () => {
+      latest.setField("end", "2026-08-27T12:00");
+    });
+    await act(async () => {
+      latest.setField("durationAmount", "0");
+    });
+
+    await act(async () => {
+      await latest.handleSubmit(fakeSubmitEvent());
+    });
+
+    expect(latest.errors.durationAmount).toBe("Duration must be greater than zero.");
+    expect(latest.prepared).toBeNull();
+  });
+
+  it("does not apply a duration before a start time is entered", async () => {
+    await renderForm();
+
+    await act(async () => {
+      latest.setField("durationAmount", "30");
+    });
+
+    expect(latest.values.end).toBe("");
+  });
+
   it("does not prompt when the form is untouched and no draft exists", async () => {
     const addSpy = vi.spyOn(window, "addEventListener");
 
@@ -233,4 +372,50 @@ describe("useCreateStreamForm", () => {
 
     addSpy.mockRestore();
   });
+
+  it("updates the displayed duration when the end time is edited", async () => {
+    await renderForm();
+
+    await act(async () => {
+      latest.setField("start", "2026-08-27T10:00");
+    });
+    await act(async () => {
+      latest.setField("end", "2026-09-26T10:00");
+    });
+
+    expect(latest.values.durationAmount).toBe("30");
+    expect(latest.values.durationUnit).toBe("days");
+
+    await act(async () => {
+      latest.setField("end", "2027-08-27T10:00");
+    });
+
+    expect(latest.values.durationAmount).toBe("1");
+    expect(latest.values.durationUnit).toBe("years");
+  });
+
+  it("applies schedule presets without touching recipient, token, or amount", async () => {
+    await renderForm();
+
+    await act(async () => {
+      latest.setField("recipient", RECIPIENT);
+      latest.setField("token", TOKEN);
+      latest.setField("amount", "50");
+      latest.setField("start", "2026-08-27T10:00");
+    });
+
+    await act(async () => {
+      latest.applyPreset("one-year-three-month-cliff");
+    });
+
+    expect(latest.values.recipient).toBe(RECIPIENT);
+    expect(latest.values.token).toBe(TOKEN);
+    expect(latest.values.amount).toBe("50");
+    expect(latest.values.start).toBe("2026-08-27T10:00");
+    expect(latest.values.end).toBe("2027-08-27T10:00");
+    expect(latest.values.cliff).toBe("2026-11-27T10:00");
+    expect(latest.values.durationAmount).toBe("1");
+    expect(latest.values.durationUnit).toBe("years");
+  });
 });
+

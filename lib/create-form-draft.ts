@@ -9,6 +9,8 @@ export const EMPTY_FORM_DRAFT: FormDraft = {
   start: "",
   end: "",
   cliff: "",
+  durationAmount: "",
+  durationUnit: "days",
 };
 
 /** Restores the create-stream form draft saved in localStorage, if any. */
@@ -32,6 +34,8 @@ export function readFormDraft(): FormDraft | null {
       start: parsed.start ?? "",
       end: parsed.end ?? "",
       cliff: parsed.cliff ?? "",
+      durationAmount: parsed.durationAmount ?? "",
+      durationUnit: parsed.durationUnit ?? "days",
     };
   } catch {
     return null;
