@@ -1,7 +1,7 @@
 import type { JSX, FormEvent, ReactNode } from "react";
 
 import type { CreateFormErrors, CreateFormField, CreateFormRefs } from "@/hooks/use-create-stream-form";
-import { DURATION_UNITS } from "@/lib/duration";
+import { DURATION_UNITS, nowAsDatetimeLocal } from "@/lib/duration";
 import { formatTokenRate } from "@/lib/format";
 import { SCHEDULE_PRESETS } from "@/lib/schedule-presets";
 import { formatUtcFromLocalInput, resolvedTimeZoneLabel } from "@/lib/timezone";
@@ -60,16 +60,28 @@ function DateTimeField({
 
   return (
     <Field label={label} error={error} errorId={`${name}-error`}>
-      <input
-        id={`field-${name}`}
-        ref={refs[name]}
-        className={error ? inputErrorClass : inputClass}
-        type="datetime-local"
-        value={values[name]}
-        onChange={(e) => onFieldChange(name, e.target.value)}
-        aria-invalid={!!error}
-        aria-describedby={error ? `${name}-error` : utc ? `${name}-utc` : undefined}
-      />
+      <div className="flex gap-2">
+        <input
+          id={`field-${name}`}
+          ref={refs[name]}
+          className={error ? inputErrorClass : inputClass}
+          type="datetime-local"
+          value={values[name]}
+          onChange={(e) => onFieldChange(name, e.target.value)}
+          aria-invalid={!!error}
+          aria-describedby={error ? `${name}-error` : utc ? `${name}-utc` : undefined}
+        />
+        {name === "start" && (
+          <button
+            type="button"
+            onClick={() => onFieldChange("start", nowAsDatetimeLocal())}
+            className="rounded border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm font-medium text-neutral-200 hover:bg-neutral-700"
+            aria-label="Set start to the current time"
+          >
+            Use now
+          </button>
+        )}
+      </div>
       {!error && utc && (
         <span id={`${name}-utc`} className="text-xs text-neutral-500">
           {utc}

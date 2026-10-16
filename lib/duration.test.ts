@@ -6,6 +6,7 @@ import {
   DURATION_UNITS,
   durationFieldError,
   isDurationUnit,
+  nowAsDatetimeLocal,
 } from "./duration";
 
 describe("durationFieldError", () => {
@@ -128,5 +129,27 @@ describe("deriveDuration", () => {
     expect(deriveDuration("", "2026-09-26T10:00")).toBeNull();
     expect(deriveDuration(START, "")).toBeNull();
     expect(deriveDuration("invalid", "2026-09-26T10:00")).toBeNull();
+  });
+});
+
+describe("nowAsDatetimeLocal", () => {
+  it("formats a given instant as a datetime-local value, truncated to the minute", () => {
+    // 30 seconds and change past the minute — the seconds must not survive,
+    // since a datetime-local value has no seconds component at all.
+    expect(nowAsDatetimeLocal(new Date(2026, 7, 27, 10, 15, 32))).toBe("2026-08-27T10:15");
+  });
+
+  it("zero-pads single-digit month, day, hour, and minute", () => {
+    expect(nowAsDatetimeLocal(new Date(2026, 0, 5, 9, 5, 0))).toBe("2026-01-05T09:05");
+  });
+
+  it("defaults to the current instant when none is given", () => {
+    const before = nowAsDatetimeLocal();
+    const now = new Date();
+    const expected = nowAsDatetimeLocal(now);
+    // Both calls land in the same clock minute in the overwhelming majority
+    // of runs; allow either the same minute or the one right after it so the
+    // test isn't flaky on the rare run that straddles a minute boundary.
+    expect([expected, nowAsDatetimeLocal(new Date(now.getTime() + 60_000))]).toContain(before);
   });
 });
