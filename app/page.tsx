@@ -13,6 +13,7 @@ import { useNow } from "@/hooks/use-now";
 import { useStreamPage, type StreamPage } from "@/hooks/use-stream-page";
 import { takePendingNotice } from "@/lib/pending-notice";
 import { filterStreamsByAddress } from "@/lib/stream-search";
+import { isStreamSortOption, sortStreams, STREAM_SORT_OPTIONS, type StreamSortOption } from "@/lib/stream-sort";
 import { formatStreamsTotal } from "@/lib/stream-total";
 import type { PendingNotice } from "@/types/notice";
 import type { StreamStatus } from "@/types/stream";
@@ -33,11 +34,16 @@ export function resolveFilter(rawParam: string | null): StreamStatus | "all" {
     : "all";
 }
 
+export function resolveSort(rawParam: string | null): StreamSortOption {
+  return rawParam && isStreamSortOption(rawParam) ? rawParam : "default";
+}
+
 function StreamSection({
   title,
   page,
   filter,
   addressQuery,
+  sort,
   emptyMessage,
   showCreateLink = false,
   className,
@@ -46,13 +52,15 @@ function StreamSection({
   page: StreamPage;
   filter: StreamStatus | "all";
   addressQuery: string;
+  sort: StreamSortOption;
   emptyMessage: string;
   showCreateLink?: boolean;
   className?: string;
 }) {
-  // Client-side, over whatever page is already loaded — it does not ask the
-  // backend for a different page, so it only ever narrows what's on screen.
-  const visible = filterStreamsByAddress(page.streams, addressQuery);
+  // Client-side, over whatever page is already loaded — neither narrowing nor
+  // reordering ever asks the backend for a different page, so both only ever
+  // apply to what's already on screen.
+  const visible = sortStreams(filterStreamsByAddress(page.streams, addressQuery), sort);
   // Summed over the streams currently shown, which the active status filter
   // and search have already narrowed, so the figure follows both.
   const total = formatStreamsTotal(visible);
@@ -202,6 +210,9 @@ function Dashboard() {
 
   // Read the filter from the URL; fall back to "all" if absent or unrecognised.
   const filter = resolveFilter(searchParams.get("filter"));
+  // Read the sort the same way, so it survives a reload or a shared link the
+  // same way the status filter does.
+  const sort = resolveSort(searchParams.get("sort"));
 
   const setFilter = useCallback(
     (value: StreamStatus | "all") => {
@@ -210,6 +221,19 @@ function Dashboard() {
         params.delete("filter");
       } else {
         params.set("filter", value);
+      }
+      router.replace(`?${params.toString()}`, { scroll: false });
+    },
+    [router, searchParams],
+  );
+
+  const setSort = useCallback(
+    (value: StreamSortOption) => {
+      const params = new URLSearchParams(searchParams.toString());
+      if (value === "default") {
+        params.delete("sort");
+      } else {
+        params.set("sort", value);
       }
       router.replace(`?${params.toString()}`, { scroll: false });
     },
@@ -329,6 +353,27 @@ function Dashboard() {
         )}
       </div>
 
+      <div className="mb-8 flex items-center gap-2">
+        <label className="flex items-center gap-2 text-xs text-neutral-400">
+          <span>Sort</span>
+          <select
+            value={sort}
+            onChange={(e) => {
+              const value = e.target.value;
+              if (isStreamSortOption(value)) setSort(value);
+            }}
+            className="rounded border border-neutral-700 bg-neutral-900 px-2 py-1 text-xs text-neutral-200 focus:border-neutral-500 focus-visible:outline-none"
+          >
+            {STREAM_SORT_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <span className="text-xs text-neutral-500">(sorts only the streams currently loaded on the page)</span>
+      </div>
+
       <div className="mb-6">
         <StreamStatusLegend />
       </div>
@@ -338,6 +383,7 @@ function Dashboard() {
         page={incoming}
         filter={filter}
         addressQuery={addressQuery}
+        sort={sort}
         emptyMessage="No incoming streams."
         className="mb-10"
       />
@@ -347,6 +393,7 @@ function Dashboard() {
         page={outgoing}
         addressQuery={addressQuery}
         filter={filter}
+        sort={sort}
         emptyMessage="No outgoing streams."
         showCreateLink
       />
