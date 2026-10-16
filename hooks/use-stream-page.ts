@@ -13,6 +13,16 @@ export const PAGE_SIZE = 25;
 // changes show up without a reload, without polling the backend too hard.
 const LIST_REFRESH_INTERVAL_MS = 15_000;
 
+// Most list-fetch failures are a single transient blip (a dropped connection,
+// a momentary 5xx) that a second attempt clears on its own. One silent retry
+// absorbs that case before bothering the user with an error to act on.
+const FIRST_PAGE_MAX_ATTEMPTS = 2;
+const FIRST_PAGE_RETRY_DELAY_MS = 500;
+
+function wait(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 export type StreamRole = "sender" | "recipient";
 
 export interface StreamPage {
@@ -57,6 +67,8 @@ function pageQuery(
  * 
  * Error state is set when a request fails due to a network or API issue, but not
  * when a request is cancelled (e.g., when switching accounts or leaving the page).
+ * The first page load retries once, silently, before surfacing an error — most
+ * failures are a transient blip that a second attempt clears on its own.
  * 
  * @param role - Whether to fetch streams where the address is "sender" or "recipient"
  * @param address - The wallet address to fetch streams for, or null if no wallet connected
@@ -132,25 +144,39 @@ export function useStreamPage(
     setError(null);
     if (!address) return;
 
-    const controller = startRequest();
     setLoading(true);
-    listStreams(pageQuery(role, address, 0, status), { signal: controller.signal })
-      .then((page) => {
-        if (generation.current !== gen) return;
-        setStreams(page.streams);
-        setTotal(page.total);
-        setFetched(page.streams.length);
-        setLastUpdated(Date.now());
-      })
-      .catch((err: unknown) => {
-        // A cancelled request is an expected outcome, not a failure to report.
-        if (isAbortError(err) || generation.current !== gen) return;
-        setError(err instanceof Error ? err.message : "Failed to load streams");
-      })
-      .finally(() => {
-        endRequest(controller);
-        if (generation.current === gen) setLoading(false);
-      });
+
+    const run = async () => {
+      for (let attempt = 1; attempt <= FIRST_PAGE_MAX_ATTEMPTS; attempt += 1) {
+        const controller = startRequest();
+        try {
+          const page = await listStreams(pageQuery(role, address, 0, status), {
+            signal: controller.signal,
+          });
+          endRequest(controller);
+          if (generation.current !== gen) return;
+          setStreams(page.streams);
+          setTotal(page.total);
+          setFetched(page.streams.length);
+          setLastUpdated(Date.now());
+          return;
+        } catch (err) {
+          endRequest(controller);
+          // A cancelled request is an expected outcome, not a failure to report.
+          if (isAbortError(err) || generation.current !== gen) return;
+          if (attempt === FIRST_PAGE_MAX_ATTEMPTS) {
+            setError(err instanceof Error ? err.message : "Failed to load streams");
+            return;
+          }
+          await wait(FIRST_PAGE_RETRY_DELAY_MS);
+          if (generation.current !== gen) return;
+        }
+      }
+    };
+
+    run().finally(() => {
+      if (generation.current === gen) setLoading(false);
+    });
   }, [role, address, status, abortInFlight, startRequest, endRequest]);
 
   useEffect(() => {
