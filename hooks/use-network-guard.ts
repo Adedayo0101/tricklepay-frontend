@@ -28,6 +28,9 @@ export interface NetworkGuard {
  *   - expectedNetwork: the network the app is configured for
  */
 export function useNetworkGuard(): NetworkGuard {
+  // `network` comes from WalletProvider's Freighter watcher, which keeps it
+  // current after an in-wallet network switch, so mismatch is recalculated on
+  // every render instead of reflecting a stale value captured at connect (#404).
   const { network: walletNetwork } = useWallet();
   const expectedNetwork = config.network;
   const mismatch = walletNetwork !== null && walletNetwork !== expectedNetwork;

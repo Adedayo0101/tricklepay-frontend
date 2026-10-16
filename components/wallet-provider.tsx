@@ -88,6 +88,9 @@ export function WalletProvider({ children }: { children: React.ReactNode }): JSX
     const watcher = new WatchWalletChanges(WALLET_WATCH_INTERVAL_MS);
     watcher.watch(({ address: next, network: net, error: watchError }) => {
       if (watchError || !next) return;
+      // Keeps the connected address current so every consumer (badge, role-based
+      // controls, stream lists) moves to the new account immediately after a
+      // Freighter account switch, instead of acting on the previous one (#403).
       setAddress(next);
       if (net) setNetwork(normalizeNetwork(net));
     });
