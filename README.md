@@ -237,6 +237,7 @@ each value comes from.
 | `NEXT_PUBLIC_NETWORK` | Stellar network (`testnet` or `mainnet`). | No | `testnet` |
 | `NEXT_PUBLIC_RPC_URL` | Soroban RPC endpoint for submitting transactions. | No | `https://soroban-testnet.stellar.org` |
 | `NEXT_PUBLIC_API_TIMEOUT_MS` | Milliseconds a backend read may take before it is aborted. `0` disables the timeout. | No | `10000` |
+| `NEXT_PUBLIC_APP_URL` | Absolute base URL of this deployment, used to build canonical and social (Open Graph/Twitter) metadata URLs. | No | *(None)* |
 
 ### Switching Contracts
 
