@@ -278,6 +278,26 @@ export async function checkApiHealth(options: RequestOptions = {}): Promise<bool
   }
 }
 
+// How many ledgers the backend's indexer is behind the chain (GET /status), or
+// null when that is not known: the request failed, the body was not what the
+// endpoint documents, or the indexer has not completed its first poll. The
+// figure is advisory, so every failure collapses to "unknown" instead of an
+// error; only a caller-driven abort still rejects.
+export async function getIndexerLag(options: RequestOptions = {}): Promise<number | null> {
+  const url = new URL("/status", config.apiUrl);
+  try {
+    return await request(url, "the indexer status", options, async (res) => {
+      if (!res.ok) return null;
+      const body = await readJson(res, "the indexer status");
+      const lag = (body as { lagLedgers?: unknown } | null)?.lagLedgers;
+      return typeof lag === "number" && Number.isInteger(lag) && lag >= 0 ? lag : null;
+    });
+  } catch (error) {
+    if (isAbortError(error)) throw error;
+    return null;
+  }
+}
+
 // Real backend client, typed against the shared contract so a signature drift
 // against the mock in `lib/mock-api.ts` fails the typecheck.
 export const apiClient: StreamApiClient = { listStreams, getStream };
