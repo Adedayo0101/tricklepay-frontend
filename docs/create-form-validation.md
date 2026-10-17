@@ -179,7 +179,7 @@ that step builds, signs, and submits the transaction.
 - **Contract-side rules.** Once submitted, the contract enforces its own
   conditions (already cancelled, nothing to withdraw yet, insufficient balance).
   Those messages come from `lib/contract-errors.ts` and are listed in
-  [api-contract.md](api-contract.md#3-error-contract).
+  [api-contract.md](api-contract.md#error-categories-and-client-handling).
 - **The network guard.** A wrong-network wallet is refused before any field is
   looked at, with `Wrong network: wallet is on <network>, app expects <network>.
   Switch networks in Freighter.` (see [use-network-guard.ts](../hooks/use-network-guard.ts)).
