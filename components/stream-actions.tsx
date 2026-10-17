@@ -3,6 +3,7 @@
 import type { JSX } from "react";
 
 import { CancelStreamControl } from "@/components/cancel-stream-control";
+import { CopyButton } from "@/components/copy-button";
 import { TimeoutRecoveryAlert } from "@/components/timeout-recovery-alert";
 import { TransactionProgress } from "@/components/transaction-progress";
 import { WithdrawPanel } from "@/components/withdraw-panel";
@@ -89,6 +90,7 @@ export function StreamActions({ stream, walletAddress, onComplete }: Props): JSX
             View transaction on Stellar Expert
             <span className="sr-only"> (opens in a new tab)</span>
           </a>
+          <CopyButton value={actions.lastTxHash} label="transaction hash" />
         </p>
       )}
     </div>
