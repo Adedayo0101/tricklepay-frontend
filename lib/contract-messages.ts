@@ -65,3 +65,39 @@ export const TX_FAILED_WITHDRAW_MESSAGE = "Failed to withdraw.";
 export const TX_FAILED_CANCEL_MESSAGE = "Failed to cancel.";
 export const TX_FAILED_CONFIRM_MESSAGE = "Failed to confirm transaction.";
 export const TX_FAILED_CREATE_MESSAGE = "Failed to create stream.";
+
+// Shown when the RPC reports that the account submitting the transaction does
+// not exist on the network (HTTP 404 from getAccount). The account must be
+// funded before any transaction can be built for it.
+export const ACCOUNT_NOT_FOUND_MESSAGE =
+  "This account has not been funded yet. Fund it before signing transactions.";
+
+// Testnet-only friendbot URL; deeplinks to the account so the user only needs
+// one click to request the initial XLM.
+export function friendbotUrl(address: string): string {
+  return `https://friendbot.stellar.org?addr=${encodeURIComponent(address)}`;
+}
+
+/**
+ * Returns true when an error thrown by `rpc.Server.getAccount` indicates the
+ * account does not exist on-chain (i.e. it has never been funded).
+ *
+ * The Stellar SDK throws a `BadResponseError` with `response.status === 404`
+ * when the horizon / RPC returns "account not found". We also check the
+ * message as a belt-and-suspenders guard for any SDK version that serialises
+ * the status differently.
+ */
+export function isAccountNotFoundError(err: unknown): boolean {
+  if (!(err instanceof Error)) return false;
+  const msg = err.message.toLowerCase();
+  // The SDK error message for a missing account contains "not found" and
+  // typically "account".  The HTTP status path covers future SDK versions that
+  // may format the message differently.
+  return (
+    msg.includes("account") && msg.includes("not found") ||
+    // BadResponseError exposes `response` on the instance; check status 404.
+    ("response" in err &&
+      typeof (err as { response?: { status?: unknown } }).response === "object" &&
+      (err as { response: { status?: unknown } }).response?.status === 404)
+  );
+}

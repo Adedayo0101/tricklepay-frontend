@@ -6,7 +6,10 @@ import { CreateStreamFields } from "@/components/create-stream-fields";
 import { StreamReview } from "@/components/stream-review";
 import { TimeoutRecoveryAlert } from "@/components/timeout-recovery-alert";
 import { TransactionProgress } from "@/components/transaction-progress";
+import { AccountNotFoundAlert } from "@/components/account-not-found-alert";
 import { useCreateStreamForm } from "@/hooks/use-create-stream-form";
+import { config } from "@/lib/config";
+import { ACCOUNT_NOT_FOUND_MESSAGE } from "@/lib/contract-messages";
 
 /**
  * Create-stream flow: the form, then a review step before signing. Data
@@ -34,7 +37,14 @@ export function CreateForm(): JSX.Element {
         />
       )}
 
-      {form.error && <p role="alert" className="text-sm text-red-400">{form.error}</p>}
+      {form.error && form.error === ACCOUNT_NOT_FOUND_MESSAGE && form.sender ? (
+        <AccountNotFoundAlert
+          address={form.sender}
+          isTestnet={config.network !== "mainnet"}
+        />
+      ) : (
+        form.error && <p role="alert" className="text-sm text-red-400">{form.error}</p>
+      )}
     </>
   );
 
