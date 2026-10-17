@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import type { JSX } from "react";
 
 import { Header } from "@/components/header";
+import { Footer } from "@/components/footer";
+import { OfflineBanner } from "@/components/offline-banner";
 import { SkipLink } from "@/components/skip-link";
 import { ThemeProvider } from "@/components/theme-provider";
 import { WalletProvider } from "@/components/wallet-provider";
@@ -57,13 +59,17 @@ export const metadata: Metadata = {
     title: "TricklePay — Token streaming on Stellar",
     description:
       "Create and manage real-time token payment streams on the Stellar network. Cliff vesting, live accrual, and instant withdrawal — all non-custodial.",
-    // app/opengraph-image.svg is picked up automatically by Next.js; this
-    // explicit entry ensures the correct dimensions are advertised.
+    // app/opengraph-image.png is picked up automatically by Next.js's
+    // file-based metadata convention. The explicit entry ensures the correct
+    // dimensions and MIME type are advertised to social crawlers.
+    // SVG is not reliably rendered by social platforms or iOS home screen —
+    // the PNG replaces it as the canonical social image.
     images: [
       {
-        url: "/opengraph-image.svg",
+        url: "/opengraph-image.png",
         width: 1200,
         height: 630,
+        type: "image/png",
         alt: "TricklePay — Token streaming on Stellar",
       },
     ],
@@ -73,17 +79,17 @@ export const metadata: Metadata = {
     title: "TricklePay — Token streaming on Stellar",
     description:
       "Create and manage real-time token payment streams on the Stellar network. Cliff vesting, live accrual, and instant withdrawal — all non-custodial.",
-    images: ["/opengraph-image.svg"],
+    images: ["/opengraph-image.png"],
   },
   icons: {
-    // app/icon.svg and app/apple-icon.svg are resolved automatically by
-    // Next.js's file-based metadata conventions. These entries are explicit
-    // fallbacks that ensure the correct rel and sizes are also emitted.
+    // app/icon.svg is kept for the browser tab favicon (SVG is supported by
+    // all modern browsers for favicons). The Apple touch icon is switched to
+    // PNG because iOS does not render SVG for home-screen icons.
     icon: [
       { url: "/icon.svg", type: "image/svg+xml" },
     ],
     apple: [
-      { url: "/apple-icon.svg", type: "image/svg+xml", sizes: "180x180" },
+      { url: "/apple-icon.png", type: "image/png", sizes: "180x180" },
     ],
   },
 };
@@ -103,7 +109,9 @@ export default function RootLayout({
           <WalletProvider>
             <SkipLink />
             <Header />
+            <OfflineBanner />
             {children}
+            <Footer />
           </WalletProvider>
         </ThemeProvider>
       </body>

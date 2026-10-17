@@ -9,7 +9,12 @@ import type { xdr } from "@stellar/stellar-sdk";
 import { config } from "@/lib/config";
 import { TRANSACTION_BASE_FEE, TX_TIMEOUT_SECONDS } from "@/lib/contract-config";
 import { parseContractError } from "@/lib/contract-errors";
-import { TX_NETWORK_REJECTED_MESSAGE, TX_SIGNING_REJECTED_MESSAGE } from "@/lib/contract-messages";
+import {
+  ACCOUNT_NOT_FOUND_MESSAGE,
+  isAccountNotFoundError,
+  TX_NETWORK_REJECTED_MESSAGE,
+  TX_SIGNING_REJECTED_MESSAGE,
+} from "@/lib/contract-messages";
 
 /**
  * Fetches the caller's account (for the current sequence number), builds the
@@ -24,7 +29,18 @@ export async function buildAndPrepareTransaction(
   buildOp: (contract: Contract) => xdr.Operation,
 ): Promise<Awaited<ReturnType<rpc.Server["prepareTransaction"]>>> {
   const contract = new Contract(config.contractId);
-  const account = await srv.getAccount(caller);
+  // getAccount throws when the account does not exist on-chain (never funded).
+  // Catch that specific case before any signing prompt so the user gets an
+  // actionable message instead of a raw SDK error.
+  let account;
+  try {
+    account = await srv.getAccount(caller);
+  } catch (err) {
+    if (isAccountNotFoundError(err)) {
+      throw new Error(ACCOUNT_NOT_FOUND_MESSAGE);
+    }
+    throw err;
+  }
 
   const tx = new TransactionBuilder(account, {
     fee: TRANSACTION_BASE_FEE,
