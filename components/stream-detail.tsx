@@ -4,10 +4,13 @@ import { useRouter } from "next/navigation";
 import { type JSX, type ReactNode, useEffect, useRef, useState } from "react";
 
 import { CopyButton, ShareLinkButton } from "@/components/copy-button";
+import { DuplicateStreamButton } from "@/components/duplicate-stream-button";
 import { ProgressBar } from "@/components/progress-bar";
 import { StreamActions } from "@/components/stream-actions";
 import { StreamStatusBadge } from "@/components/stream-status-badge";
 import { TokenDisplay } from "@/components/token-display";
+import { VestingCurve } from "@/components/vesting-curve";
+import { VestingProjection } from "@/components/vesting-projection";
 import { useWallet } from "@/components/wallet-provider";
 import { useAccrual } from "@/hooks/use-accrual";
 import { useNow } from "@/hooks/use-now";
@@ -95,10 +98,15 @@ export function StreamDetail({ stream, onComplete }: { stream: StreamView; onCom
         >
           &larr; Back
         </button>
-        <ShareLinkButton
-          url={typeof window !== "undefined" ? window.location.href : ""}
-          label={`stream #${stream.id}`}
-        />
+        <div className="flex items-center gap-2">
+          {wallet.address === stream.sender && (
+            <DuplicateStreamButton stream={stream} />
+          )}
+          <ShareLinkButton
+            url={typeof window !== "undefined" ? window.location.href : ""}
+            label={`stream #${stream.id}`}
+          />
+        </div>
       </div>
 
       <div className="mb-6 mt-3 flex items-center justify-between">
@@ -158,8 +166,9 @@ export function StreamDetail({ stream, onComplete }: { stream: StreamView; onCom
         </div>
       </div>
 
-      <dl className="grid grid-cols-2 gap-4 text-sm">
-        <Field label="From" value={truncateAddress(stream.sender)} mono copyValue={stream.sender} />
+      <VestingCurve stream={stream} />
+
+      <dl className="grid grid-cols-2 gap-4 text-sm">        <Field label="From" value={truncateAddress(stream.sender)} mono copyValue={stream.sender} />
         <Field label="To" value={truncateAddress(stream.recipient)} mono copyValue={stream.recipient} />
         <Field label="Token" value={<TokenDisplay token={stream.token} />} mono copyValue={stream.token} />
         <Field label="Withdrawn" value={formatTokenAmount(stream.withdrawn, stream.token)} />
@@ -190,6 +199,8 @@ export function StreamDetail({ stream, onComplete }: { stream: StreamView; onCom
         Times above are shown in your local timezone —{" "}
         <span className="text-neutral-400">{resolvedTimeZoneLabel()}</span>.
       </p>
+
+      <VestingProjection stream={stream} />
 
       <StreamActions stream={stream} walletAddress={wallet.address} onComplete={onComplete} />
     </main>
