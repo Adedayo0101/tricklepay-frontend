@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import type { JSX } from "react";
 
 import { Header } from "@/components/header";
+import { Footer } from "@/components/footer";
+import { OfflineBanner } from "@/components/offline-banner";
 import { SkipLink } from "@/components/skip-link";
 import { ThemeProvider } from "@/components/theme-provider";
 import { WalletProvider } from "@/components/wallet-provider";
@@ -103,7 +105,9 @@ export default function RootLayout({
           <WalletProvider>
             <SkipLink />
             <Header />
+            <OfflineBanner />
             {children}
+            <Footer />
           </WalletProvider>
         </ThemeProvider>
       </body>

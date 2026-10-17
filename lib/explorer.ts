@@ -58,3 +58,18 @@ export function txExplorerUrl(hash: string, network: string): string {
   const segment = EXPLORER_NETWORK_SEGMENT[network] ?? "testnet";
   return `https://stellar.expert/explorer/${segment}/tx/${hash}`;
 }
+
+/**
+ * Returns the Stellar Expert URL for a deployed contract.
+ *
+ * @param contractId - The contract's Stellar address (starts with C).
+ * @param network    - The active network name (`config.network`).
+ *
+ * @example
+ * contractExplorerUrl("CABC…", "testnet")
+ * // → "https://stellar.expert/explorer/testnet/contract/CABC…"
+ */
+export function contractExplorerUrl(contractId: string, network: string): string {
+  const segment = EXPLORER_NETWORK_SEGMENT[network] ?? "testnet";
+  return `https://stellar.expert/explorer/${segment}/contract/${contractId}`;
+}
