@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { type JSX, useState, useEffect } from "react";
 
+import { ApiStatus } from "@/components/api-status";
 import { NetworkBadge } from "@/components/network-badge";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { WalletButton } from "@/components/wallet-button";
@@ -58,6 +59,9 @@ export function Header(): JSX.Element {
         <div className="flex items-center gap-3">
           {/* Network badge is always visible so the active network is never hidden */}
           <NetworkBadge />
+
+          {/* Whether the backend the lists load from is reachable */}
+          <ApiStatus />
 
           {/* Theme toggle is always visible */}
           <ThemeToggle />

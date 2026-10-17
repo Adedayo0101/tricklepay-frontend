@@ -3,6 +3,7 @@ import type { JSX } from "react";
 
 import { Header } from "@/components/header";
 import { Footer } from "@/components/footer";
+import { IndexerLagBanner } from "@/components/indexer-lag-banner";
 import { OfflineBanner } from "@/components/offline-banner";
 import { SkipLink } from "@/components/skip-link";
 import { ThemeProvider } from "@/components/theme-provider";
@@ -110,6 +111,7 @@ export default function RootLayout({
             <SkipLink />
             <Header />
             <OfflineBanner />
+            <IndexerLagBanner />
             {children}
             <Footer />
           </WalletProvider>

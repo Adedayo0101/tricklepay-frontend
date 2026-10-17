@@ -62,3 +62,25 @@ export function vestingRatePerDay(
   if (totalAmount <= 0n || endTime <= startTime) return null;
   return (totalAmount * 86_400n) / (endTime - startTime);
 }
+
+/**
+ * Where a stream's cliff falls along its schedule, for marking it on a progress
+ * bar.
+ *
+ * @param startTime - Stream start time, Unix seconds
+ * @param endTime - Stream end time, Unix seconds
+ * @param cliffTime - Cliff time, Unix seconds
+ * @returns The cliff's position in basis points (0 to 10000) of the way from
+ *   start to end, truncated down, or null when the stream has no cliff to show:
+ *   the cliff is not after the start, or the schedule has no duration. A cliff
+ *   past the end is clamped to 10000.
+ */
+export function cliffPositionBps(
+  startTime: bigint,
+  endTime: bigint,
+  cliffTime: bigint,
+): number | null {
+  if (cliffTime <= startTime || endTime <= startTime) return null;
+  const bps = ((cliffTime - startTime) * 10_000n) / (endTime - startTime);
+  return Number(bps > 10_000n ? 10_000n : bps);
+}
