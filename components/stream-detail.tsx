@@ -18,6 +18,7 @@ import { formatTokenAmount, truncateAddress } from "@/lib/format";
 import { formatSchedule, NO_CLIFF_LABEL } from "@/lib/schedule";
 import { setSessionItem } from "@/lib/scroll";
 import { resolvedTimeZoneLabel } from "@/lib/timezone";
+import { cliffPositionBps } from "@/lib/vesting";
 import type { StreamView } from "@/types/stream";
 
 // Announce balance to assistive technology at most once per this interval.
@@ -68,6 +69,11 @@ export function StreamDetail({ stream, onComplete }: { stream: StreamView; onCom
   // useAccrual never ticks.
   useNow();
   const schedule = formatSchedule(stream);
+  const cliffPosition = cliffPositionBps(
+    BigInt(stream.startTime),
+    BigInt(stream.endTime),
+    BigInt(stream.cliffTime),
+  );
 
   // Keep a ref to the latest accrual so the announcement interval can read it
   // without being listed as a dependency (which would restart the timer every second).
@@ -162,7 +168,14 @@ export function StreamDetail({ stream, onComplete }: { stream: StreamView; onCom
           </p>
         )}
         <div className="mt-4">
-          <ProgressBar value={stream.progress} />
+          <ProgressBar
+            value={stream.progress}
+            cliff={
+              schedule.cliff && cliffPosition !== null
+                ? { position: cliffPosition, label: `Cliff: ${schedule.cliff.local}` }
+                : undefined
+            }
+          />
         </div>
       </div>
 
