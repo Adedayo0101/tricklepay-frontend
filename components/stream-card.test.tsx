@@ -1,8 +1,9 @@
 /* @vitest-environment jsdom */
 
 import { render } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { formatTime } from "@/lib/format";
 import type { StreamView } from "@/types/stream";
 
 import { StreamCard } from "./stream-card";
@@ -46,5 +47,53 @@ describe("StreamCard", () => {
       <StreamCard stream={{ ...baseStream, status: "cancelled", cancelled: true }} />,
     );
     expect(container.textContent?.toLowerCase()).toContain("cancelled");
+  });
+
+  describe("cliff", () => {
+    const NOW = 1_700_000_000;
+    const withCliff = (cliffTime: number): StreamView => ({
+      ...baseStream,
+      startTime: String(NOW - 1_000),
+      endTime: String(NOW + 100_000),
+      cliffTime: String(cliffTime),
+    });
+
+    beforeEach(() => {
+      vi.useFakeTimers({ toFake: ["Date"] });
+      vi.setSystemTime(NOW * 1000);
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it("shows the cliff date and that it has not been reached yet", () => {
+      const cliffTime = NOW + 3_600;
+      const { getByTestId } = render(<StreamCard stream={withCliff(cliffTime)} />);
+      const row = getByTestId("stream-card-cliff");
+      expect(row.textContent).toContain("Cliff");
+      expect(row.textContent).toContain(formatTime(String(cliffTime)));
+      expect(row.textContent).toContain("cliff in 1h 0m");
+      expect(row.textContent).not.toContain("passed");
+    });
+
+    it("shows the cliff date and that it has passed", () => {
+      const cliffTime = NOW - 500;
+      const { getByTestId } = render(<StreamCard stream={withCliff(cliffTime)} />);
+      const row = getByTestId("stream-card-cliff");
+      expect(row.textContent).toContain(formatTime(String(cliffTime)));
+      expect(row.textContent).toContain("cliff passed");
+    });
+
+    it("omits the cliff when it matches the start", () => {
+      const stream = withCliff(NOW - 1_000);
+      const { queryByTestId } = render(<StreamCard stream={stream} />);
+      expect(queryByTestId("stream-card-cliff")).toBeNull();
+    });
+
+    it("omits the cliff when it is not after the start", () => {
+      const { queryByTestId } = render(<StreamCard stream={baseStream} />);
+      expect(queryByTestId("stream-card-cliff")).toBeNull();
+    });
   });
 });
