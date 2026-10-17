@@ -20,6 +20,10 @@ vi.mock("@/components/theme-toggle", () => ({
   ThemeToggle: () => <div data-testid="theme-toggle">Theme</div>,
 }));
 
+vi.mock("@/components/api-status", () => ({
+  ApiStatus: () => <div data-testid="api-status">API</div>,
+}));
+
 vi.mock("@/components/network-badge", () => ({
   NetworkBadge: () => <div data-testid="network-badge">testnet</div>,
 }));

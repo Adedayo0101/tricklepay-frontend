@@ -253,6 +253,15 @@ export interface StreamStore {
 }
 
 export async function stubApi(page: Page, store: StreamStore): Promise<void> {
+  // The header's reachability probe (GET /health).
+  await page.route(`${API_URL}/health`, (route: Route) =>
+    route.fulfill({
+      status: 200,
+      headers: { "content-type": "application/json", ...corsHeaders() },
+      body: JSON.stringify({ status: "ok", version: "test" }),
+    }),
+  );
+
   await page.route(`${API_URL}/streams**`, async (route: Route) => {
     const url = new URL(route.request().url());
 
