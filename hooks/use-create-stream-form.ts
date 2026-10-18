@@ -6,13 +6,14 @@ import { useEffect, useRef, useState, type FormEvent, type RefObject } from "rea
 import { useWallet } from "@/components/wallet-provider";
 import { useFormNavigationWarning } from "@/hooks/use-form-navigation-warning";
 import { useNetworkGuard } from "@/hooks/use-network-guard";
-import { confirmTransaction, TransactionTimeoutError } from "@/lib/contract";
+import { confirmTransaction, estimateCreateStreamFee, TransactionTimeoutError } from "@/lib/contract";
 import {
   TX_CONFIRMATION_TIMED_OUT_AGAIN_MESSAGE,
   TX_FAILED_CONFIRM_MESSAGE,
   wrongNetworkMessage,
 } from "@/lib/contract-messages";
 import { clearFormDraft, EMPTY_FORM_DRAFT, readFormDraft, writeFormDraft } from "@/lib/create-form-draft";
+import { clearLastToken, readLastToken, writeLastToken } from "@/lib/last-token";
 import { submitCreateStream } from "@/lib/create-stream-submission";
 import {
   amountFieldError,
@@ -27,9 +28,10 @@ import { addDurationToLocal, deriveDuration, durationFieldError, isDurationUnit 
 import { formatDuration } from "@/lib/format";
 import { setPendingNotice } from "@/lib/pending-notice";
 import { applySchedulePreset, SCHEDULE_PRESETS } from "@/lib/schedule-presets";
+import { readTokenBalance } from "@/lib/token-balance";
 import { parseAmount, toUnix } from "@/lib/validation";
 import { vestingRatePerDay } from "@/lib/vesting";
-import type { CreateStreamParams, TxStage } from "@/types/contract";
+import type { BalanceCheck, CreateStreamParams, FeeEstimate, TxStage } from "@/types/contract";
 import type { FormDraft } from "@/types/form";
 
 export type CreateFormField = keyof FormDraft;
@@ -58,6 +60,17 @@ export interface CreateStreamForm {
   timeoutHash: string | null;
   error: string | null;
   prepared: CreateStreamParams | null;
+  /** Best-effort network-fee estimate for the stream under review. */
+  feeEstimate: FeeEstimate;
+  /** Best-effort read of the sender's balance for the stream under review. */
+  balanceCheck: BalanceCheck;
+  /**
+   * The token contract id remembered from the last stream, offered as the
+   * default for a new form. Null when nothing valid is remembered.
+   */
+  rememberedToken: string | null;
+  /** Forgets the remembered token so a new form no longer offers it. */
+  clearRememberedToken: () => void;
   handleSubmit: (e: FormEvent) => Promise<void>;
   handleConfirm: () => Promise<void>;
   handleRecoverTimeout: () => Promise<void>;
@@ -86,10 +99,19 @@ export function useCreateStreamForm(): CreateStreamForm {
   const { mismatch, walletNetwork, expectedNetwork } = useNetworkGuard();
   const router = useRouter();
 
-  const [values, setValues] = useState<FormDraft>(() => readFormDraft() ?? EMPTY_FORM_DRAFT);
+  const [values, setValues] = useState<FormDraft>(() => {
+    const draft = readFormDraft();
+    // A restored draft wins. Otherwise offer the last token used, so creating
+    // several streams in a row does not mean retyping the same address.
+    if (draft) return draft;
+    return { ...EMPTY_FORM_DRAFT, token: readLastToken() ?? "" };
+  });
   // True when the form was initialised from a persisted draft, so the
   // navigation warning can tell the user their work is safe in storage.
   const [restoredFromDraft] = useState(() => readFormDraft() !== null);
+  // The token remembered from the last stream, offered as the default for a
+  // new form and clearable on demand. See lib/last-token.ts.
+  const [rememberedToken, setRememberedToken] = useState<string | null>(() => readLastToken());
   const [errors, setErrors] = useState<CreateFormErrors>({});
   const [submitting, setSubmitting] = useState(false);
   const [stage, setStage] = useState<TxStage | null>(null);
@@ -99,6 +121,18 @@ export function useCreateStreamForm(): CreateStreamForm {
   // step. Holds the exact parameters confirm will submit, so the review always
   // shows what will actually go on-chain.
   const [prepared, setPrepared] = useState<CreateStreamParams | null>(null);
+  // Best-effort network-fee estimate for the reviewed stream. Starts
+  // "unavailable" so nothing is claimed before the review step; re-runs each
+  // time the user reaches review. A failure here never blocks confirming.
+  const [feeEstimate, setFeeEstimate] = useState<FeeEstimate>({ status: "unavailable" });
+  // Monotonic token so a slow estimate from a previous review can never
+  // overwrite the current one (e.g. after going back and editing).
+  const feeEstimateToken = useRef(0);
+  // Best-effort read of the sender's token balance, so a shortfall is shown on
+  // the review step before signing. Starts "unavailable" like the fee estimate,
+  // and a failed read never blocks confirming.
+  const [balanceCheck, setBalanceCheck] = useState<BalanceCheck>({ status: "unavailable" });
+  const balanceCheckToken = useRef(0);
 
   // Refs used to focus the first invalid field on submit
   const refs: CreateFormRefs = {
@@ -294,6 +328,45 @@ export function useCreateStreamForm(): CreateStreamForm {
     writeFormDraft(draft);
   }, [amount, cliff, durationAmount, durationUnit, end, recipient, start, token]);
 
+  // Runs the pre-signing simulation in the background to surface the network
+  // fee on the review step. Best-effort: on failure the review shows the fee as
+  // unavailable and the user can still confirm and sign. The token guards
+  // against a stale estimate overwriting a newer one.
+  async function estimateFee(params: CreateStreamParams) {
+    const token = ++feeEstimateToken.current;
+    setFeeEstimate({ status: "loading" });
+    try {
+      const stroops = await estimateCreateStreamFee(params);
+      if (token === feeEstimateToken.current) setFeeEstimate({ status: "ready", stroops });
+    } catch {
+      if (token === feeEstimateToken.current) setFeeEstimate({ status: "unavailable" });
+    }
+  }
+
+  // Reads the sender's token balance in the background so the review step can
+  // flag a shortfall before signing. Best-effort: a failed read is shown as
+  // unavailable and never blocks confirming. The token guards against a stale
+  // read overwriting a newer one.
+  async function checkBalance(params: CreateStreamParams) {
+    const token = ++balanceCheckToken.current;
+    setBalanceCheck({ status: "loading" });
+    try {
+      const balance = await readTokenBalance(params.token, params.sender);
+      if (token !== balanceCheckToken.current) return;
+      const shortfall = balance < params.totalAmount ? params.totalAmount - balance : null;
+      setBalanceCheck({ status: "ready", balance, shortfall });
+    } catch {
+      if (token === balanceCheckToken.current) setBalanceCheck({ status: "unavailable" });
+    }
+  }
+
+  // Forgets the remembered token so a new form no longer offers it. Only the
+  // stored preference is cleared; the current field value is untouched.
+  function clearRememberedToken() {
+    clearLastToken();
+    setRememberedToken(null);
+  }
+
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (submitting || !wallet.address) return;
@@ -322,7 +395,7 @@ export function useCreateStreamForm(): CreateStreamForm {
 
     // Validation passed: show the review step. The transaction itself only
     // goes out once the user confirms there.
-    setPrepared({
+    const params: CreateStreamParams = {
       sender: wallet.address,
       recipient,
       token,
@@ -330,7 +403,20 @@ export function useCreateStreamForm(): CreateStreamForm {
       startTime,
       endTime,
       cliffTime,
-    });
+    };
+    setPrepared(params);
+
+    // Remember the token for next time. Reached only once the whole form —
+    // including the token — has passed validation, so an invalid value is never
+    // stored; writeLastToken re-checks before writing as a second line of
+    // defence.
+    writeLastToken(token);
+    setRememberedToken(token);
+
+    // Kick off the fee estimate and balance read in the background; neither
+    // blocks the review from rendering.
+    void estimateFee(params);
+    void checkBalance(params);
   }
 
   async function handleConfirm() {
@@ -395,9 +481,21 @@ export function useCreateStreamForm(): CreateStreamForm {
     timeoutHash,
     error,
     prepared,
+    feeEstimate,
+    balanceCheck,
+    rememberedToken,
+    clearRememberedToken,
     handleSubmit,
     handleConfirm,
     handleRecoverTimeout,
-    backToEdit: () => setPrepared(null),
+    backToEdit: () => {
+      // Discard any in-flight reads so a late result can't land on the next
+      // review the user opens.
+      feeEstimateToken.current += 1;
+      setFeeEstimate({ status: "unavailable" });
+      balanceCheckToken.current += 1;
+      setBalanceCheck({ status: "unavailable" });
+      setPrepared(null);
+    },
   };
 }

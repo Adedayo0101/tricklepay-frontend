@@ -65,9 +65,15 @@ test.describe("create then withdraw", () => {
     await expect(review).toContainText(truncateAddress(TOKEN_ID));
     await expect(review).toContainText("100");
 
-    // Reviewing signs nothing: no simulation or submission has happened yet.
-    expect(chain.methods).not.toContain("simulateTransaction");
+    // Reviewing signs and submits nothing. The fee estimate and balance read do
+    // run read-only simulations here, but no transaction leaves the app until
+    // the user confirms.
     expect(chain.sendCount).toBe(0);
+    expect(
+      await page.evaluate(
+        () => (window as unknown as { __signedTransactions: string[] }).__signedTransactions.length,
+      ),
+    ).toBe(0);
 
     // Back returns to the form without losing any entered value.
     await review.getByRole("button", { name: "Back to edit" }).click();

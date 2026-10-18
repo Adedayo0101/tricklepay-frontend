@@ -105,6 +105,12 @@ There is exactly one draft per origin. Two create tabs open side by side do not
 stay in sync: each holds its own copy, and the last keystroke in either tab
 overwrites the stored object (nothing listens for the `storage` event).
 
+When there is **no** draft to restore, the token field may instead be prefilled
+from the last token used in a previous stream, remembered separately under
+`tricklepay-last-token`. A restored draft always wins over it, and the remembered
+token is never written to the draft until you save the form. See
+[persisted-client-state.md](persisted-client-state.md#4-last-token-used).
+
 ---
 
 ## 4. How a draft is discarded

@@ -23,7 +23,14 @@ const PARAMS: CreateStreamParams = {
 
 describe("StreamReview", () => {
   it("displays the exact values that will be submitted on confirm", () => {
-    const el = StreamReview({ params: PARAMS, submitting: false, onBack: vi.fn(), onConfirm: vi.fn() });
+    const el = StreamReview({
+      params: PARAMS,
+      feeEstimate: { status: "unavailable" },
+      balanceCheck: { status: "unavailable" },
+      submitting: false,
+      onBack: vi.fn(),
+      onConfirm: vi.fn(),
+    });
     const json = JSON.stringify(el);
 
     expect(json).toContain(PARAMS.sender);
@@ -40,13 +47,27 @@ describe("StreamReview", () => {
   });
 
   it("shows the no-cliff label when the params have no cliff", () => {
-    const el = StreamReview({ params: PARAMS, submitting: false, onBack: vi.fn(), onConfirm: vi.fn() });
+    const el = StreamReview({
+      params: PARAMS,
+      feeEstimate: { status: "unavailable" },
+      balanceCheck: { status: "unavailable" },
+      submitting: false,
+      onBack: vi.fn(),
+      onConfirm: vi.fn(),
+    });
     expect(JSON.stringify(el)).toContain(NO_CLIFF_LABEL);
   });
 
   it("makes the confirm action available and wires it to onConfirm", () => {
     const onConfirm = vi.fn();
-    const el = StreamReview({ params: PARAMS, submitting: false, onBack: vi.fn(), onConfirm });
+    const el = StreamReview({
+      params: PARAMS,
+      feeEstimate: { status: "unavailable" },
+      balanceCheck: { status: "unavailable" },
+      submitting: false,
+      onBack: vi.fn(),
+      onConfirm,
+    });
 
     const [, actionsRow] = el.props.children;
     const [, confirmBtn] = actionsRow.props.children;
@@ -59,11 +80,62 @@ describe("StreamReview", () => {
   });
 
   it("disables the confirm action while a submission is in flight", () => {
-    const el = StreamReview({ params: PARAMS, submitting: true, onBack: vi.fn(), onConfirm: vi.fn() });
+    const el = StreamReview({
+      params: PARAMS,
+      feeEstimate: { status: "unavailable" },
+      balanceCheck: { status: "unavailable" },
+      submitting: true,
+      onBack: vi.fn(),
+      onConfirm: vi.fn(),
+    });
 
     const [, actionsRow] = el.props.children;
     const [, confirmBtn] = actionsRow.props.children;
 
     expect(confirmBtn.props.disabled).toBe(true);
+  });
+
+  it("compares the balance with the amount and shows the shortfall", () => {
+    // Hold 6, stream needs 10: short by 4.
+    const el = StreamReview({
+      params: PARAMS,
+      feeEstimate: { status: "unavailable" },
+      balanceCheck: { status: "ready", balance: 6_000_000n, shortfall: 4_000_000n },
+      submitting: false,
+      onBack: vi.fn(),
+      onConfirm: vi.fn(),
+    });
+    const json = JSON.stringify(el);
+
+    expect(json).toContain(formatTokenAmount("6000000", PARAMS.token));
+    expect(json).toContain("You hold");
+    expect(json).toContain("needs");
+    expect(json).toContain(formatTokenAmount("4000000", PARAMS.token));
+  });
+
+  it("shows no shortfall warning when the balance covers the amount", () => {
+    const el = StreamReview({
+      params: PARAMS,
+      feeEstimate: { status: "unavailable" },
+      balanceCheck: { status: "ready", balance: 10_000_000n, shortfall: null },
+      submitting: false,
+      onBack: vi.fn(),
+      onConfirm: vi.fn(),
+    });
+
+    expect(JSON.stringify(el)).not.toContain("You hold");
+  });
+
+  it("reports an unreadable balance without blocking confirm", () => {
+    const el = StreamReview({
+      params: PARAMS,
+      feeEstimate: { status: "unavailable" },
+      balanceCheck: { status: "unavailable" },
+      submitting: false,
+      onBack: vi.fn(),
+      onConfirm: vi.fn(),
+    });
+
+    expect(JSON.stringify(el)).toContain("Could not read");
   });
 });

@@ -4,6 +4,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import type { CreateFormRefs } from "@/hooks/use-create-stream-form";
+import { nativeAssetContractId } from "@/lib/native-asset";
 
 import { CreateStreamFields } from "./create-stream-fields";
 
@@ -31,6 +32,8 @@ describe("CreateStreamFields", () => {
     } as CreateFormRefs,
     onFieldChange: vi.fn(),
     onApplyPreset: vi.fn(),
+    rememberedToken: null,
+    onClearRememberedToken: vi.fn(),
     previewRate: null,
     previewDuration: null,
     feedback: null,
@@ -119,6 +122,65 @@ describe("CreateStreamFields", () => {
       expect(screen.getAllByRole("button", { name: "Set start to the current time" })).toHaveLength(
         1,
       );
+    });
+  });
+
+  describe('the "Use XLM" button', () => {
+    it("fills the token field with the configured network's native asset contract", () => {
+      const onFieldChange = vi.fn();
+      render(<CreateStreamFields {...defaultProps} onFieldChange={onFieldChange} />);
+
+      fireEvent.click(screen.getByRole("button", { name: "Use native XLM as the token" }));
+
+      expect(onFieldChange).toHaveBeenCalledWith("token", nativeAssetContractId());
+    });
+  });
+
+  describe("the remembered token", () => {
+    const TOKEN = "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM";
+
+    it("offers no clear control when nothing is remembered", () => {
+      render(<CreateStreamFields {...defaultProps} />);
+
+      expect(screen.queryByText("Clear saved token")).toBeNull();
+    });
+
+    it("clears the remembered token, and the field while it still shows it", () => {
+      const onClearRememberedToken = vi.fn();
+      const onFieldChange = vi.fn();
+      render(
+        <CreateStreamFields
+          {...defaultProps}
+          values={{ ...defaultProps.values, token: TOKEN }}
+          rememberedToken={TOKEN}
+          onClearRememberedToken={onClearRememberedToken}
+          onFieldChange={onFieldChange}
+        />,
+      );
+
+      fireEvent.click(screen.getByRole("button", { name: "Clear saved token" }));
+
+      expect(onClearRememberedToken).toHaveBeenCalled();
+      expect(onFieldChange).toHaveBeenCalledWith("token", "");
+    });
+
+    it("leaves an edited token alone when the remembered one is cleared", () => {
+      const onClearRememberedToken = vi.fn();
+      const onFieldChange = vi.fn();
+      render(
+        <CreateStreamFields
+          {...defaultProps}
+          values={{ ...defaultProps.values, token: "CBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB" }}
+          rememberedToken={TOKEN}
+          onClearRememberedToken={onClearRememberedToken}
+          onFieldChange={onFieldChange}
+        />,
+      );
+
+      fireEvent.click(screen.getByRole("button", { name: "Clear saved token" }));
+
+      expect(onClearRememberedToken).toHaveBeenCalled();
+      expect(onFieldChange).not.toHaveBeenCalled();
     });
   });
 
