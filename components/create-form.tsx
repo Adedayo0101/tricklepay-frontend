@@ -53,6 +53,8 @@ export function CreateForm(): JSX.Element {
       <div className="flex flex-col gap-4">
         <StreamReview
           params={form.prepared}
+          feeEstimate={form.feeEstimate}
+          balanceCheck={form.balanceCheck}
           submitting={form.submitting}
           onBack={form.backToEdit}
           onConfirm={() => void form.handleConfirm()}
@@ -69,6 +71,8 @@ export function CreateForm(): JSX.Element {
       refs={form.refs}
       onFieldChange={form.setField}
       onApplyPreset={form.applyPreset}
+      rememberedToken={form.rememberedToken}
+      onClearRememberedToken={form.clearRememberedToken}
       previewRate={form.previewRate}
       previewDuration={form.previewDuration}
       feedback={feedback}

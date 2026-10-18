@@ -3,6 +3,7 @@ import type { JSX, FormEvent, ReactNode } from "react";
 import type { CreateFormErrors, CreateFormField, CreateFormRefs } from "@/hooks/use-create-stream-form";
 import { DURATION_UNITS, nowAsDatetimeLocal } from "@/lib/duration";
 import { formatTokenRate } from "@/lib/format";
+import { nativeAssetContractId } from "@/lib/native-asset";
 import { SCHEDULE_PRESETS } from "@/lib/schedule-presets";
 import { formatUtcFromLocalInput, resolvedTimeZoneLabel } from "@/lib/timezone";
 import type { FormDraft } from "@/types/form";
@@ -171,6 +172,8 @@ export function CreateStreamFields({
   previewRate,
   previewDuration,
   onApplyPreset,
+  rememberedToken,
+  onClearRememberedToken,
   feedback,
   submitting,
   submitDisabled,
@@ -180,12 +183,24 @@ export function CreateStreamFields({
   previewRate: bigint | null;
   previewDuration: string | null;
   onApplyPreset: (presetId: string) => void;
+  /** The token remembered from the last stream, or null if none is stored. */
+  rememberedToken: string | null;
+  /** Forgets the remembered token (see lib/last-token.ts). */
+  onClearRememberedToken: () => void;
   feedback: ReactNode;
   submitting: boolean;
   submitDisabled: boolean;
   onSubmit: (e: FormEvent) => void;
 }): JSX.Element {
   const { values, errors, refs, onFieldChange } = fields;
+
+  // Clearing the remembered token also empties the field when it is still
+  // showing that token, so the preference and the form do not disagree. A
+  // token the user has since edited is left alone.
+  function handleClearRememberedToken() {
+    onClearRememberedToken();
+    if (values.token === rememberedToken) onFieldChange("token", "");
+  }
 
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-4">
@@ -202,16 +217,35 @@ export function CreateStreamFields({
         />
       </Field>
       <Field label="Token contract id" error={errors.token} errorId="token-error">
-        <input
-          id="field-token"
-          ref={refs.token}
-          className={errors.token ? inputErrorClass : inputClass}
-          value={values.token}
-          onChange={(e) => onFieldChange("token", e.target.value)}
-          placeholder="C..."
-          aria-invalid={!!errors.token}
-          aria-describedby={errors.token ? "token-error" : undefined}
-        />
+        <div className="flex gap-2">
+          <input
+            id="field-token"
+            ref={refs.token}
+            className={`min-w-0 flex-1 ${errors.token ? inputErrorClass : inputClass}`}
+            value={values.token}
+            onChange={(e) => onFieldChange("token", e.target.value)}
+            placeholder="C..."
+            aria-invalid={!!errors.token}
+            aria-describedby={errors.token ? "token-error" : undefined}
+          />
+          <button
+            type="button"
+            onClick={() => onFieldChange("token", nativeAssetContractId())}
+            className="shrink-0 rounded border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm font-medium text-neutral-200 hover:bg-neutral-700"
+            aria-label="Use native XLM as the token"
+          >
+            Use XLM
+          </button>
+        </div>
+        {rememberedToken && (
+          <button
+            type="button"
+            onClick={handleClearRememberedToken}
+            className="self-start text-xs text-neutral-500 underline hover:text-neutral-300"
+          >
+            Clear saved token
+          </button>
+        )}
       </Field>
       <Field label="Amount" error={errors.amount} errorId="amount-error">
         <input

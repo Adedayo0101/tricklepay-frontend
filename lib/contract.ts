@@ -29,7 +29,13 @@
 // be in flight at a time. See lib/contract-guard.ts.
 
 // Public entry points — unchanged. Import from here, not the submodules.
-export { createStream, withdraw, withdrawAmount, cancel } from "@/lib/contract-operations";
+export {
+  createStream,
+  estimateCreateStreamFee,
+  withdraw,
+  withdrawAmount,
+  cancel,
+} from "@/lib/contract-operations";
 export { confirmTransaction, TransactionTimeoutError } from "@/lib/contract-confirm";
 export { isTransactionPending } from "@/lib/contract-guard";
 

@@ -4,15 +4,19 @@ import type { JSX, ReactNode } from "react";
 
 import { CopyButton } from "@/components/copy-button";
 import { TokenDisplay } from "@/components/token-display";
-import { formatDuration, formatTokenAmount, formatTokenRate, truncateAddress } from "@/lib/format";
+import { formatAmount, formatDuration, formatTokenAmount, formatTokenRate, truncateAddress } from "@/lib/format";
 import { formatSchedule, NO_CLIFF_LABEL, type ScheduleMoment } from "@/lib/schedule";
 import { resolvedTimeZoneLabel } from "@/lib/timezone";
 import { vestingRatePerDay } from "@/lib/vesting";
-import type { CreateStreamParams } from "@/types/contract";
+import type { BalanceCheck, CreateStreamParams, FeeEstimate } from "@/types/contract";
 
 interface Props {
   /** The exact parameters that will be submitted on confirm. */
   params: CreateStreamParams;
+  /** Best-effort network-fee estimate; never blocks confirming. */
+  feeEstimate: FeeEstimate;
+  /** Best-effort read of the sender's token balance; never blocks confirming. */
+  balanceCheck: BalanceCheck;
   submitting: boolean;
   onBack: () => void;
   onConfirm: () => void;
@@ -79,10 +83,37 @@ function TimeRow({ label, moment }: { label: string; moment: ScheduleMoment }) {
   );
 }
 
+// The estimated network fee in the network's native currency (XLM, the fee
+// asset on Stellar). The label marks it as an estimate; a failed estimate is
+// reported but never blocks confirming, because signing does not depend on it.
+function feeEstimateText(feeEstimate: FeeEstimate): string {
+  switch (feeEstimate.status) {
+    case "ready":
+      return `~${formatAmount(feeEstimate.stroops.toString())} XLM`;
+    case "loading":
+      return "Estimating…";
+    case "unavailable":
+      return "Could not estimate — you can still continue";
+  }
+}
+
+// The sender's token balance, read before signing so a shortfall is visible
+// alongside the amount. A failed read says so without blocking the flow.
+function balanceText(balanceCheck: BalanceCheck, token: string): string {
+  switch (balanceCheck.status) {
+    case "ready":
+      return formatTokenAmount(balanceCheck.balance.toString(), token);
+    case "loading":
+      return "Checking…";
+    case "unavailable":
+      return "Could not read — you can still continue";
+  }
+}
+
 // The confirmation step between filling the create form and signing. Renders
 // the same CreateStreamParams instance the confirm handler passes to
 // createStream, so what the user reviews is exactly what goes on-chain.
-export function StreamReview({ params, submitting, onBack, onConfirm }: Props): JSX.Element {
+export function StreamReview({ params, feeEstimate, balanceCheck, submitting, onBack, onConfirm }: Props): JSX.Element {
   const schedule = formatSchedule(params);
 
   return (
@@ -106,6 +137,7 @@ export function StreamReview({ params, submitting, onBack, onConfirm }: Props): 
           <Row label="Amount">
             {formatTokenAmount(params.totalAmount.toString(), params.token)}
           </Row>
+          <Row label="Your balance">{balanceText(balanceCheck, params.token)}</Row>
           <Row label="Vesting rate">
             {formatTokenRate(
               vestingRatePerDay(params.totalAmount, params.startTime, params.endTime)?.toString() ?? "0",
@@ -122,7 +154,18 @@ export function StreamReview({ params, submitting, onBack, onConfirm }: Props): 
           ) : (
             <Row label="Cliff">{NO_CLIFF_LABEL}</Row>
           )}
+          <Row label="Network fee (estimated)">{feeEstimateText(feeEstimate)}</Row>
         </dl>
+        {balanceCheck.status === "ready" && balanceCheck.shortfall !== null && (
+          <p
+            role="alert"
+            className="mt-3 rounded border border-amber-800/60 bg-amber-950/40 px-3 py-2 text-xs text-amber-200"
+          >
+            You hold {formatTokenAmount(balanceCheck.balance.toString(), params.token)}, this stream
+            needs {formatTokenAmount(params.totalAmount.toString(), params.token)} — short by{" "}
+            {formatTokenAmount(balanceCheck.shortfall.toString(), params.token)}.
+          </p>
+        )}
       </div>
 
       <div className="flex flex-wrap gap-3">

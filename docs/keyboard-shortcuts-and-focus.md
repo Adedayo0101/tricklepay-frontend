@@ -53,7 +53,8 @@ wallet button, menu), and the "create a new stream" link in the page body.
 2. **Header** (same as dashboard)
 3. **Form fields** (in the order they appear on screen):
    - Recipient address (text input)
-   - Token (text input)
+   - Token (text input, then "Use XLM" and — while a token is remembered —
+     "Clear saved token")
    - Amount (text input)
    - Start time (datetime-local input)
    - End time (datetime-local input)
