@@ -201,7 +201,7 @@ To keep presentation copy easy to review and maintain, user-facing strings are k
 
 - **`lib/contract-messages.ts`**: Transaction lifecycle stages (`TX_STAGES`, `TX_STAGE_LABELS`), concurrency warnings (`TX_ALREADY_IN_PROGRESS_MESSAGE`), wallet rejections (`TX_SIGNING_REJECTED_MESSAGE`), network mismatch warnings (`wrongNetworkMessage`), and confirmation timeout notices (`TX_CONFIRM_TIMEOUT_MESSAGE`).
 - **`lib/stream-messages.ts`**: Explanations for why stream actions are disabled or blocked (e.g., `STREAM_FULLY_WITHDRAWN_MESSAGE`, `STREAM_CANCELLED_MESSAGE`, `streamLockedUntilCliffMessage`, `streamNotStartedMessage`).
-- **`lib/contract-errors.ts`**: Mapping table (`CONTRACT_ERROR_MESSAGES`) converting numeric Soroban contract error codes into plain-language messages, with a graceful generic fallback for unmapped codes.
+- **`lib/contract-errors.ts`**: Mapping table (`CONTRACT_ERROR_MESSAGES`) converting numeric Soroban contract error codes into plain-language messages, with a graceful generic fallback for unmapped codes. To add or change one, follow [docs/adding-contract-error-messages.md](docs/adding-contract-error-messages.md).
 - **`lib/create-stream-validation.ts` & `lib/validation.ts`**: Field-level validation strings and required-field messages for stream creation forms.
 - **`lib/amount.ts`**: Validation error messages for token amount parsing, decimal limits, and withdrawable balance boundary checks (`withdrawalAmountError`).
 

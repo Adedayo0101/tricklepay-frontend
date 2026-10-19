@@ -1,6 +1,15 @@
+import bundleAnalyzer from "@next/bundle-analyzer";
 import type { NextConfig } from "next";
 
 import { assertContractIdForBuild } from "./lib/build-guard";
+
+// `npm run analyze` sets ANALYZE=true and writes bundle reports to
+// .next/analyze/. With the flag unset the wrapper returns the config
+// unchanged, so normal builds are unaffected.
+const withBundleAnalyzer = bundleAnalyzer({
+  enabled: process.env.ANALYZE === "true",
+  openAnalyzer: false,
+});
 
 // Pulls the origin out of a configured URL so it can be added to the CSP's
 // connect-src. Falls back to undefined for an unset or malformed value
@@ -90,7 +99,7 @@ const makeConfig = (phase: string): NextConfig => {
   // lib/config.ts cannot enforce this during the build (prerendering has to
   // succeed), so the build fails here instead.
   if (phase === "phase-production-build") assertContractIdForBuild();
-  return nextConfig;
+  return withBundleAnalyzer(nextConfig);
 };
 
 export default makeConfig;

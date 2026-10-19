@@ -252,6 +252,9 @@ changed.
 
 ### Transaction lifecycle
 
+A sequence diagram of these steps, marking where each failure is raised, is
+in [transaction-write-path.md](transaction-write-path.md).
+
 Every call above goes through `invoke()` in `lib/contract.ts`, in this fixed
 order, each step reported via an optional `onStageChange(stage: TxStage)`
 callback (`"preparing" | "signing" | "submitting" | "confirming"`,
