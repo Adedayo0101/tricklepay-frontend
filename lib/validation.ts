@@ -38,11 +38,12 @@ export const MAX_AMOUNT_BASE_UNITS = 9_223_372_036_854_775_807n;
 export const MAX_HUMAN_AMOUNT = "922337203685.4775807";
 
 /**
- * Parses a human decimal amount into 7-decimal base units (bigint).
+ * Parses a human decimal amount into base units (bigint) using the specified decimals
+ * (defaulting to 7, the Stellar standard).
  * Rejects non-positive numbers, scientific notation, negative numbers,
- * multiple decimal points, and amounts with more than 7 decimal places.
+ * multiple decimal points, and amounts with more than `decimals` decimal places.
  */
-export function parseAmount(human: string): bigint {
+export function parseAmount(human: string, decimals: number = 7): bigint {
   const trimmed = human.trim();
 
   if (!trimmed) {
@@ -57,13 +58,14 @@ export function parseAmount(human: string): bigint {
 
   const [whole, frac = ""] = trimmed.split(".");
 
-  // Reject more than 7 decimal places explicitly rather than silently truncating.
-  if (frac.length > 7) {
-    throw new Error("Amount cannot have more than 7 decimal places.");
+  // Reject more decimal places than allowed explicitly rather than silently truncating.
+  if (frac.length > decimals) {
+    throw new Error(`Amount cannot have more than ${decimals} decimal places.`);
   }
 
-  const fracPadded = frac.padEnd(7, "0");
-  const result = BigInt(whole) * 10_000_000n + BigInt(fracPadded);
+  const fracPadded = frac.padEnd(decimals, "0");
+  const base = 10n ** BigInt(decimals);
+  const result = BigInt(whole) * base + (fracPadded ? BigInt(fracPadded) : 0n);
 
   if (result <= 0n) {
     throw new Error("Amount must be greater than zero.");
@@ -71,7 +73,7 @@ export function parseAmount(human: string): bigint {
 
   // Catches anything above i64::MAX here, before the wallet prompt, so the
   // user never signs an amount the contract would revert with AmountTooLarge (#402).
-  if (result > MAX_AMOUNT_BASE_UNITS) {
+  if (decimals === 7 && result > MAX_AMOUNT_BASE_UNITS) {
     throw new Error(`Amount cannot exceed ${MAX_HUMAN_AMOUNT}.`);
   }
 

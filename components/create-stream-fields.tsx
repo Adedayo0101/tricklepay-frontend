@@ -187,12 +187,17 @@ export function CreateStreamFields({
   rememberedToken: string | null;
   /** Forgets the remembered token (see lib/last-token.ts). */
   onClearRememberedToken: () => void;
+  /** Token decimal scale (defaults to 7). */
+  tokenDecimals?: number;
+  /** Visible notice when decimals could not be read and defaulted to 7. */
+  decimalsNotice?: string | null;
   feedback: ReactNode;
   submitting: boolean;
   submitDisabled: boolean;
   onSubmit: (e: FormEvent) => void;
 }): JSX.Element {
-  const { values, errors, refs, onFieldChange } = fields;
+  const { values, errors, refs, onFieldChange, tokenDecimals = 7, decimalsNotice } = fields;
+
 
   // Clearing the remembered token also empties the field when it is still
   // showing that token, so the preference and the form do not disagree. A
@@ -246,6 +251,11 @@ export function CreateStreamFields({
             Clear saved token
           </button>
         )}
+        {decimalsNotice && (
+          <span role="status" className="text-xs text-amber-400">
+            {decimalsNotice}
+          </span>
+        )}
       </Field>
       <Field label="Amount" error={errors.amount} errorId="amount-error">
         <input
@@ -261,10 +271,12 @@ export function CreateStreamFields({
         />
         {!errors.amount && (
           <span id="amount-hint" className="text-xs text-neutral-500">
-            Up to 7 decimal places (e.g. 1.0000001)
+            Up to {tokenDecimals} decimal places (e.g. 1.
+            {tokenDecimals > 0 ? `${"0".repeat(Math.max(0, tokenDecimals - 1))}1` : "0"})
           </span>
         )}
       </Field>
+
       <p className="text-xs text-neutral-500">
         Start, end, and cliff below use your local timezone —{" "}
         <span className="text-neutral-400">{resolvedTimeZoneLabel()}</span>.

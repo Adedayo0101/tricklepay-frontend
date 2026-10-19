@@ -17,10 +17,13 @@ interface Props {
   feeEstimate: FeeEstimate;
   /** Best-effort read of the sender's token balance; never blocks confirming. */
   balanceCheck: BalanceCheck;
+  /** Decimal precision of the stream token. */
+  decimals?: number;
   submitting: boolean;
   onBack: () => void;
   onConfirm: () => void;
 }
+
 
 // A row of the review summary. Addresses render truncated with a copy
 // affordance so the full value stays one click away without dominating the
@@ -99,10 +102,10 @@ function feeEstimateText(feeEstimate: FeeEstimate): string {
 
 // The sender's token balance, read before signing so a shortfall is visible
 // alongside the amount. A failed read says so without blocking the flow.
-function balanceText(balanceCheck: BalanceCheck, token: string): string {
+function balanceText(balanceCheck: BalanceCheck, token: string, decimals?: number): string {
   switch (balanceCheck.status) {
     case "ready":
-      return formatTokenAmount(balanceCheck.balance.toString(), token);
+      return formatTokenAmount(balanceCheck.balance.toString(), token, decimals);
     case "loading":
       return "Checking…";
     case "unavailable":
@@ -113,7 +116,7 @@ function balanceText(balanceCheck: BalanceCheck, token: string): string {
 // The confirmation step between filling the create form and signing. Renders
 // the same CreateStreamParams instance the confirm handler passes to
 // createStream, so what the user reviews is exactly what goes on-chain.
-export function StreamReview({ params, feeEstimate, balanceCheck, submitting, onBack, onConfirm }: Props): JSX.Element {
+export function StreamReview({ params, feeEstimate, balanceCheck, decimals, submitting, onBack, onConfirm }: Props): JSX.Element {
   const schedule = formatSchedule(params);
 
   return (
@@ -135,13 +138,15 @@ export function StreamReview({ params, feeEstimate, balanceCheck, submitting, on
           <AddressRow label="Recipient" address={params.recipient} />
           <TokenContractRow token={params.token} />
           <Row label="Amount">
-            {formatTokenAmount(params.totalAmount.toString(), params.token)}
+            {formatTokenAmount(params.totalAmount.toString(), params.token, decimals)}
           </Row>
-          <Row label="Your balance">{balanceText(balanceCheck, params.token)}</Row>
+          <Row label="Your balance">{balanceText(balanceCheck, params.token, decimals)}</Row>
           <Row label="Vesting rate">
             {formatTokenRate(
               vestingRatePerDay(params.totalAmount, params.startTime, params.endTime)?.toString() ?? "0",
               params.token,
+              "day",
+              decimals,
             )}
           </Row>
           <Row label="Duration">
@@ -161,12 +166,13 @@ export function StreamReview({ params, feeEstimate, balanceCheck, submitting, on
             role="alert"
             className="mt-3 rounded border border-amber-800/60 bg-amber-950/40 px-3 py-2 text-xs text-amber-200"
           >
-            You hold {formatTokenAmount(balanceCheck.balance.toString(), params.token)}, this stream
-            needs {formatTokenAmount(params.totalAmount.toString(), params.token)} — short by{" "}
-            {formatTokenAmount(balanceCheck.shortfall.toString(), params.token)}.
+            You hold {formatTokenAmount(balanceCheck.balance.toString(), params.token, decimals)}, this stream
+            needs {formatTokenAmount(params.totalAmount.toString(), params.token, decimals)} — short by{" "}
+            {formatTokenAmount(balanceCheck.shortfall.toString(), params.token, decimals)}.
           </p>
         )}
       </div>
+
 
       <div className="flex flex-wrap gap-3">
         <button

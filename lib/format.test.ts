@@ -59,7 +59,27 @@ describe("formatAmount", () => {
   it("treats an empty string as zero, the way BigInt does", () => {
     expect(formatAmount("")).toBe("0");
   });
+
+  it("formats 6-decimal token amounts accurately", () => {
+    expect(formatAmount("1000000", 6)).toBe("1");
+    expect(formatAmount("1500000", 6)).toBe("1.5");
+    expect(formatAmount("1234567", 6)).toBe("1.234567");
+    expect(formatAmount("1", 6)).toBe("0.000001");
+  });
+
+  it("formats 7-decimal token amounts accurately", () => {
+    expect(formatAmount("10000000", 7)).toBe("1");
+    expect(formatAmount("15000000", 7)).toBe("1.5");
+    expect(formatAmount("1", 7)).toBe("0.0000001");
+  });
+
+  it("formats 18-decimal token amounts accurately", () => {
+    expect(formatAmount("1000000000000000000", 18)).toBe("1");
+    expect(formatAmount("1500000000000000000", 18)).toBe("1.5");
+    expect(formatAmount("1", 18)).toBe("0.000000000000000001");
+  });
 });
+
 
 describe("formatAmount boundaries", () => {
   it("renders zero as a visible '0', never an empty string", () => {

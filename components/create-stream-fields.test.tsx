@@ -205,4 +205,19 @@ describe("CreateStreamFields", () => {
       expect(onApplyPreset).toHaveBeenCalledWith("one-year-three-month-cliff");
     });
   });
+
+  describe("decimals notice", () => {
+    it("renders decimalsNotice when provided", () => {
+      render(
+        <CreateStreamFields
+          {...defaultProps}
+          decimalsNotice="Could not read decimals from token contract. Defaulting to 7 decimals."
+        />,
+      );
+
+      expect(
+        screen.getByText("Could not read decimals from token contract. Defaulting to 7 decimals."),
+      ).toBeTruthy();
+    });
+  });
 });

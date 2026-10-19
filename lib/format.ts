@@ -53,21 +53,25 @@ export function formatTokenDisplay(tokenAddress: string): string {
   return truncateAddress(tokenAddress);
 }
 
+import { getCachedTokenDecimals } from "@/lib/token-decimals";
+
 /**
- * Formats a base-unit token amount (7 decimals, the Stellar standard) as a
- * decimal string.
+ * Formats a base-unit token amount as a decimal string using the token's decimals
+ * (defaulting to 7, the Stellar standard).
  *
- * @param raw - Token amount in base units (stroops), as a string
+ * @param raw - Token amount in base units, as a string
+ * @param decimals - Token decimal precision (defaults to 7)
  * @returns Decimal string with trailing zeros trimmed (e.g., "1234567" → "0.1234567",
  *   "10000000" → "1"). Truncates fractional digits by division; no rounding applied.
  */
-export function formatAmount(raw: string): string {
+export function formatAmount(raw: string, decimals: number = 7): string {
   const value = BigInt(raw);
-  const base = 10n ** STROOP_DECIMALS;
+  if (decimals === 0) return value.toString();
+  const base = 10n ** BigInt(decimals);
   const whole = value / base;
   const frac = value % base;
   if (frac === 0n) return whole.toString();
-  const fracStr = frac.toString().padStart(7, "0").replace(/0+$/, "");
+  const fracStr = frac.toString().padStart(decimals, "0").replace(/0+$/, "");
   return `${whole}.${fracStr}`;
 }
 
@@ -76,8 +80,9 @@ export function formatAmount(raw: string): string {
  * contracts keep the compact numeric display so cards and table cells remain
  * easy to scan.
  */
-export function formatTokenAmount(raw: string, tokenAddress: string): string {
-  const amount = formatAmount(raw);
+export function formatTokenAmount(raw: string, tokenAddress: string, decimals?: number): string {
+  const resolvedDecimals = decimals ?? getCachedTokenDecimals(tokenAddress) ?? 7;
+  const amount = formatAmount(raw, resolvedDecimals);
   const metadata = resolveTokenMetadata(tokenAddress);
   return metadata ? `${amount} ${metadata.symbol}` : amount;
 }
@@ -87,10 +92,13 @@ export function formatTokenRate(
   raw: string,
   tokenAddress: string,
   period = "day",
+  decimals?: number,
 ): string {
+  const resolvedDecimals = decimals ?? getCachedTokenDecimals(tokenAddress) ?? 7;
   const metadata = resolveTokenMetadata(tokenAddress);
-  return `${formatAmount(raw)} ${metadata ? metadata.symbol : "tokens"}/${period}`;
+  return `${formatAmount(raw, resolvedDecimals)} ${metadata ? metadata.symbol : "tokens"}/${period}`;
 }
+
 
 /**
  * Truncates a Stellar address to a short display form.
@@ -165,12 +173,17 @@ export function timeRemaining(endTimeSeconds: string): string {
  * @param rawWithdrawable - Withdrawable amount in base units (stroops), as a string
  * @returns Formatted hint message (e.g., "Maximum withdrawable amount: 1.5")
  */
-export function formatMaxWithdrawHint(rawWithdrawable: string, tokenAddress?: string): string {
+export function formatMaxWithdrawHint(
+  rawWithdrawable: string,
+  tokenAddress?: string,
+  decimals?: number,
+): string {
   const formatted = tokenAddress
-    ? formatTokenAmount(rawWithdrawable, tokenAddress)
-    : formatAmount(rawWithdrawable);
+    ? formatTokenAmount(rawWithdrawable, tokenAddress, decimals)
+    : formatAmount(rawWithdrawable, decimals ?? 7);
   return `Maximum withdrawable amount: ${formatted}`;
 }
+
 
 /**
  * Returns a relative countdown string for any Unix-second timestamp, labelled

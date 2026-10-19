@@ -80,6 +80,33 @@ describe("lib/validation", () => {
       );
     });
 
+    it("parses 6-decimal token amounts accurately", () => {
+      expect(parseAmount("1", 6)).toBe(1_000_000n);
+      expect(parseAmount("1.5", 6)).toBe(1_500_000n);
+      expect(parseAmount("0.000001", 6)).toBe(1n);
+      expect(() => parseAmount("0.0000001", 6)).toThrow(
+        "Amount cannot have more than 6 decimal places.",
+      );
+    });
+
+    it("parses 7-decimal token amounts accurately", () => {
+      expect(parseAmount("1", 7)).toBe(10_000_000n);
+      expect(parseAmount("1.5", 7)).toBe(15_000_000n);
+      expect(parseAmount("0.0000001", 7)).toBe(1n);
+      expect(() => parseAmount("0.00000001", 7)).toThrow(
+        "Amount cannot have more than 7 decimal places.",
+      );
+    });
+
+    it("parses 18-decimal token amounts accurately", () => {
+      expect(parseAmount("1", 18)).toBe(1_000_000_000_000_000_000n);
+      expect(parseAmount("1.5", 18)).toBe(1_500_000_000_000_000_000n);
+      expect(parseAmount("0.000000000000000001", 18)).toBe(1n);
+      expect(() => parseAmount("0.0000000000000000001", 18)).toThrow(
+        "Amount cannot have more than 18 decimal places.",
+      );
+    });
+
     it("throws when parsed base unit amount is zero", () => {
       expect(() => parseAmount("0")).toThrow("Amount must be greater than zero.");
       expect(() => parseAmount("0.0000000")).toThrow("Amount must be greater than zero.");

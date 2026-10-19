@@ -17,6 +17,18 @@ vi.mock("next/navigation", () => ({
   useRouter: vi.fn(),
 }));
 
+const { readTokenDecimalsMock, getCachedTokenDecimalsMock } = vi.hoisted(() => ({
+  readTokenDecimalsMock: vi.fn(),
+  getCachedTokenDecimalsMock: vi.fn(),
+}));
+
+vi.mock("@/lib/token-decimals", () => ({
+  readTokenDecimals: readTokenDecimalsMock,
+  getCachedTokenDecimals: getCachedTokenDecimalsMock,
+  setCachedTokenDecimals: vi.fn(),
+  clearTokenDecimalsCache: vi.fn(),
+}));
+
 import { useWallet } from "@/components/wallet-provider";
 import { useNetworkGuard } from "@/hooks/use-network-guard";
 import { SCHEDULE_PRESETS } from "@/lib/schedule-presets";
@@ -95,6 +107,9 @@ describe("useCreateStreamForm", () => {
     vi.mocked(useRouter).mockReturnValue({ push: vi.fn() } as unknown as ReturnType<
       typeof useRouter
     >);
+
+    readTokenDecimalsMock.mockResolvedValue(7);
+    getCachedTokenDecimalsMock.mockReturnValue(undefined);
 
     // The end time is validated against the clock; pin it before the fixed
     // dates the tests enter. Date.now only, so React's real timers keep running.
@@ -440,6 +455,56 @@ describe("useCreateStreamForm", () => {
     expect(latest.values.cliff).toBe("2026-11-27T10:00");
     expect(latest.values.durationAmount).toBe("1");
     expect(latest.values.durationUnit).toBe("years");
+  });
+
+  describe("token decimals handling", () => {
+    it("updates tokenDecimals and uses them when reading decimals succeeds", async () => {
+      readTokenDecimalsMock.mockResolvedValueOnce(6);
+      await renderForm();
+
+      await act(async () => {
+        latest.setField("recipient", RECIPIENT);
+        latest.setField("token", "CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC");
+        latest.setField("amount", "10.123456");
+        latest.setField("start", "2026-08-27T10:00");
+        latest.setField("end", "2026-08-27T12:00");
+      });
+
+      expect(latest.tokenDecimals).toBe(6);
+      expect(latest.decimalsNotice).toBeNull();
+
+      await act(async () => {
+        await latest.handleSubmit(fakeSubmitEvent());
+      });
+
+      expect(latest.errors.amount).toBeUndefined();
+      expect(latest.prepared?.amount).toBe(10_123_456n);
+    });
+
+    it("defaults to 7 decimals with a visible notice when reading token decimals fails", async () => {
+      readTokenDecimalsMock.mockRejectedValueOnce(new Error("RPC failure"));
+      await renderForm();
+
+      await act(async () => {
+        latest.setField("recipient", RECIPIENT);
+        latest.setField("token", "CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC");
+        latest.setField("amount", "10.1234567");
+        latest.setField("start", "2026-08-27T10:00");
+        latest.setField("end", "2026-08-27T12:00");
+      });
+
+      expect(latest.tokenDecimals).toBe(7);
+      expect(latest.decimalsNotice).toBe(
+        "Could not read decimals from token contract. Defaulting to 7 decimals.",
+      );
+
+      await act(async () => {
+        await latest.handleSubmit(fakeSubmitEvent());
+      });
+
+      expect(latest.errors.amount).toBeUndefined();
+      expect(latest.prepared?.amount).toBe(101_234_567n);
+    });
   });
 });
 
