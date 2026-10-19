@@ -24,6 +24,7 @@ export function TransactionProgress({ stage }: Props): JSX.Element | null {
     <div
       role="status"
       aria-live="polite"
+      aria-atomic="true"
       aria-label="Transaction progress"
       className="my-3 rounded-lg border border-neutral-800 bg-neutral-900/80 p-4 text-xs"
     >
@@ -31,13 +32,18 @@ export function TransactionProgress({ stage }: Props): JSX.Element | null {
         <span className="font-semibold text-neutral-200">
           Stage {currentIdx >= 0 ? currentIdx + 1 : 1} of {TX_STAGES.length}: {TX_STAGE_LABELS[stage]}
         </span>
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-neutral-800 px-2 py-0.5 text-[10px] font-medium text-neutral-300">
+        <span
+          aria-hidden="true"
+          className="inline-flex items-center gap-1.5 rounded-full bg-neutral-800 px-2 py-0.5 text-[10px] font-medium text-neutral-300"
+        >
           <span className="h-1.5 w-1.5 animate-ping rounded-full bg-emerald-400" />
           Processing
         </span>
       </div>
 
-      <div className="grid grid-cols-4 gap-2">
+      {/* Visual only: the stage sentence above is what gets announced, so a
+          screen reader hears one short line per stage change. */}
+      <div className="grid grid-cols-4 gap-2" aria-hidden="true">
         {TX_STAGES.map((step, idx) => {
           const isDone = idx < currentIdx;
           const isCurrent = idx === currentIdx;

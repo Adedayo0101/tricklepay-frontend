@@ -6,11 +6,8 @@
 // nothing is signed or submitted, so it is safe to run while the user reviews
 // the form.
 
-import { Account, Address, Contract, rpc, scValToNative, TransactionBuilder } from "@stellar/stellar-sdk";
-
 import { config } from "@/lib/config";
 import { TRANSACTION_BASE_FEE, TX_TIMEOUT_SECONDS } from "@/lib/contract-config";
-import { server } from "@/lib/contract-network";
 
 // simulateTransaction only needs the operation and the network passphrase, so
 // the sequence number is never used — a placeholder keeps the read unsigned.
@@ -26,6 +23,9 @@ const READ_ONLY_SEQUENCE = "0";
  *   best-effort and never block the flow on it.
  */
 export async function readTokenBalance(tokenContractId: string, holder: string): Promise<bigint> {
+  // Loaded on demand: the SDK is only needed once a balance is actually read.
+  const [{ Account, Address, Contract, rpc, scValToNative, TransactionBuilder }, { server }] =
+    await Promise.all([import("@stellar/stellar-sdk"), import("@/lib/contract-network")]);
   const contract = new Contract(tokenContractId);
   const tx = new TransactionBuilder(new Account(holder, READ_ONLY_SEQUENCE), {
     fee: TRANSACTION_BASE_FEE,
