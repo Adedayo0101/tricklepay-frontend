@@ -213,7 +213,32 @@ readers without moving focus.
 | `npm run test:e2e` (Playwright) | Finds elements by role and label; asserts the cancel alertdialog and status regions appear | Does not check focus order, keyboard-only use or announcements |
 | CI (`.github/workflows/ci.yml`) | Runs `npm run lint`, `npm run typecheck` and `npm run build` | Does **not** run `npm test` or the Playwright suite |
 
-No automated accessibility audit (axe, Lighthouse CI, pa11y) is wired in.
+### Axe checks in component tests
+
+`components/a11y.axe.test.tsx` renders components in jsdom and runs
+[axe-core](https://github.com/dequelabs/axe-core) on them: the create stream
+form fields (empty and with errors), transaction progress and the dashboard
+status legend. Any violation fails `npm test` and lists the rule, its impact,
+the help text and the offending selector.
+
+To cover a new component, render it and assert on `axeViolations` from
+`test/axe.ts`:
+
+```tsx
+/* @vitest-environment jsdom */
+import { render } from "@testing-library/react";
+import { axeViolations } from "@/test/axe";
+
+it("has no axe violations", async () => {
+  const { container } = render(<MyComponent />);
+  expect(await axeViolations(container)).toEqual([]);
+});
+```
+
+`color-contrast` is skipped because jsdom does not paint, so axe cannot
+compute colours there. To track an existing violation instead of fixing it in
+the same change, pass its rule id as the second argument and link the issue
+next to it, so new violations of other rules still fail.
 
 ### Manual pass for any pull request that changes UI
 

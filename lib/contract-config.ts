@@ -4,13 +4,13 @@
 // Behaviour is unchanged — these are the same values previously inlined in
 // the invocation flow.
 
-import { BASE_FEE } from "@stellar/stellar-sdk";
-
-// Minimum fee applied when building every transaction. The SDK's BASE_FEE
-// (100 stroops) is the network minimum; simulation (prepareTransaction)
-// raises the fee to cover the actual Soroban resource footprint, so this
-// only needs to satisfy the structural minimum at build time.
-export const TRANSACTION_BASE_FEE = BASE_FEE;
+// Minimum fee applied when building every transaction: the network minimum of
+// 100 stroops, the same value as the SDK's BASE_FEE. Written out rather than
+// imported so this module does not pull the SDK into every bundle that reads
+// a timing constant. Simulation (prepareTransaction) raises the fee to cover
+// the actual Soroban resource footprint, so this only needs to satisfy the
+// structural minimum at build time.
+export const TRANSACTION_BASE_FEE = "100";
 
 // Seconds a built transaction stays valid. Covers simulation, the wallet's
 // signing prompt and submission; after that the network rejects it outright.
