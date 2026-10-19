@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { type JSX, Suspense, useCallback, useEffect, useState } from "react";
 
 import { BrowserSupportNote } from "@/components/browser-support-note";
+import { CopyButton } from "@/components/copy-button";
 import { LoadingState } from "@/components/loading-state";
 import { StreamList } from "@/components/stream-list";
 import { StreamStatusLegend } from "@/components/stream-status-legend";
@@ -155,8 +156,16 @@ function StreamSection({
       )}
 
       {page.error && (
-        <div className="mb-3 flex items-center gap-3">
-          <p className="text-sm text-red-400">{page.error}</p>
+        <div className="mb-3 flex flex-wrap items-center gap-3">
+          <p className="text-sm text-red-400">
+            {page.error}
+            {page.requestId && (
+              <span className="ml-2 inline-flex items-center gap-1 font-mono text-xs text-neutral-400">
+                <span>(Request ID: {page.requestId})</span>
+                <CopyButton value={page.requestId} label="request id" />
+              </span>
+            )}
+          </p>
           <button
             onClick={page.refresh}
             disabled={page.loading}

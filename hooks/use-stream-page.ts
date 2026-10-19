@@ -31,6 +31,7 @@ export interface StreamPage {
   loading: boolean;
   loadingMore: boolean;
   error: string | null;
+  requestId: string | null;
   hasMore: boolean;
   loadMore: () => void;
   refresh: () => void;
@@ -103,6 +104,7 @@ export function useStreamPage(
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [requestId, setRequestId] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<number | null>(null);
 
   // Bumped whenever the query changes. A request compares the generation it
@@ -145,6 +147,7 @@ export function useStreamPage(
     setTotal(0);
     setFetched(0);
     setError(null);
+    setRequestId(null);
     if (!address) return;
 
     setLoading(true);
@@ -169,6 +172,14 @@ export function useStreamPage(
           if (isAbortError(err) || generation.current !== gen) return;
           if (attempt === FIRST_PAGE_MAX_ATTEMPTS) {
             setError(err instanceof Error ? err.message : "Failed to load streams");
+            const reqId =
+              typeof err === "object" &&
+              err !== null &&
+              "requestId" in err &&
+              typeof (err as { requestId: unknown }).requestId === "string"
+                ? (err as { requestId: string }).requestId
+                : null;
+            setRequestId(reqId);
             return;
           }
           await wait(FIRST_PAGE_RETRY_DELAY_MS);
@@ -263,6 +274,14 @@ export function useStreamPage(
       .catch((err: unknown) => {
         if (isAbortError(err) || generation.current !== gen) return;
         setError(err instanceof Error ? err.message : "Failed to load more streams");
+        const reqId =
+          typeof err === "object" &&
+          err !== null &&
+          "requestId" in err &&
+          typeof (err as { requestId: unknown }).requestId === "string"
+            ? (err as { requestId: string }).requestId
+            : null;
+        setRequestId(reqId);
       })
       .finally(() => {
         endRequest(controller);
@@ -281,5 +300,5 @@ export function useStreamPage(
     endRequest,
   ]);
 
-  return { streams, total, loading, loadingMore, error, hasMore, loadMore, refresh, lastUpdated };
+  return { streams, total, loading, loadingMore, error, requestId, hasMore, loadMore, refresh, lastUpdated };
 }

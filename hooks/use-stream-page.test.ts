@@ -179,6 +179,21 @@ describe("useStreamPage — load error", () => {
 
     expect(page.lastUpdated).toBeNull();
   });
+
+  it("surfaces requestId when the API error carries a requestId", async () => {
+    const errorWithRequestId = Object.assign(new Error("Database query failed"), {
+      requestId: "req-fail-456",
+      code: "DB_ERROR",
+    });
+    vi.mocked(listStreams).mockRejectedValue(errorWithRequestId);
+
+    harness.render(() => useStreamPage("sender", ADDRESS));
+    await flush();
+    const page = harness.render(() => useStreamPage("sender", ADDRESS));
+
+    expect(page.error).toBe("Database query failed");
+    expect(page.requestId).toBe("req-fail-456");
+  });
 });
 
 describe("useStreamPage — lastUpdated", () => {

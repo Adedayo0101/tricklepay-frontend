@@ -54,6 +54,7 @@ function mockDisconnected() {
     loadingMore: false,
     hasMore: false,
     error: null,
+    requestId: null,
     refresh: vi.fn(),
     loadMore: vi.fn(),
     lastUpdated: null,
@@ -94,6 +95,7 @@ function mockConnectedWithData() {
     loadingMore: false,
     hasMore: false,
     error: null,
+    requestId: null,
     refresh: vi.fn(),
     loadMore: vi.fn(),
     lastUpdated: null,
@@ -198,6 +200,7 @@ describe("Dashboard Page", () => {
         loadingMore: false,
         hasMore: false,
         error: null,
+        requestId: null,
         refresh: vi.fn(),
         loadMore: vi.fn(),
         lastUpdated: null,
@@ -208,6 +211,36 @@ describe("Dashboard Page", () => {
 
       expect(htmlString).toContain("Total across visible streams");
       expect(htmlString).toContain(">0<");
+    });
+
+    it("displays error message and copyable request ID when an API error occurs", () => {
+      vi.mocked(useWallet).mockReturnValue({
+        address: "GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN7",
+        network: "testnet",
+        connecting: false,
+        error: null,
+        connect: vi.fn(),
+        disconnect: vi.fn(),
+      });
+      vi.mocked(useStreamPage).mockReturnValue({
+        streams: [],
+        total: 0,
+        loading: false,
+        loadingMore: false,
+        hasMore: false,
+        error: "Database connection failed",
+        requestId: "req-err-789",
+        refresh: vi.fn(),
+        loadMore: vi.fn(),
+        lastUpdated: null,
+      });
+
+      const el = Home();
+      const htmlString = renderToStaticMarkup(el);
+
+      expect(htmlString).toContain("Database connection failed");
+      expect(htmlString).toContain("req-err-789");
+      expect(htmlString).toContain("Copy request id");
     });
   });
 });
