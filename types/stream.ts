@@ -66,7 +66,8 @@ export interface StreamView {
 // remain unfetched.
 export interface StreamListResponse {
   streams: StreamView[];
-  total: number;
-  limit: number;
-  offset: number;
+  total?: number;
+  nextCursor?: string;
+  limit?: number;
+  offset?: number;
 }

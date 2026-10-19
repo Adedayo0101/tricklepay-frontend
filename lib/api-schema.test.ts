@@ -114,6 +114,17 @@ describe("parseStreamListResponse", () => {
     expect(() => parseStreamListResponse({ streams: [], total: 0 })).not.toThrow();
   });
 
+  it("accepts an envelope without total (omitted by backend when includeTotal is false)", () => {
+    const page = { streams: [validStream()], limit: 25, offset: 0, nextCursor: "cur_123" };
+    expect(parseStreamListResponse(page)).toBe(page);
+  });
+
+  it("rejects a non-string nextCursor", () => {
+    expect(() => parseStreamListResponse({ streams: [], nextCursor: 123 })).toThrow(
+      /response\.nextCursor must be a string/,
+    );
+  });
+
   it("rejects a missing streams array", () => {
     expect(() => parseStreamListResponse({ total: 0 })).toThrow(
       /response\.streams must be an array/,

@@ -247,6 +247,21 @@ function corsHeaders(): Record<string, string> {
 // Backend read API
 // ---------------------------------------------------------------------------
 
+/**
+ * Query parameters accepted by `GET /streams` according to the backend OpenAPI specification:
+ * https://github.com/TricklePay/tricklepay-backend/blob/main/openapi.yaml
+ */
+export const ALLOWED_STREAM_QUERY_PARAMS = [
+  "sender",
+  "recipient",
+  "status",
+  "limit",
+  "offset",
+  "includeTotal",
+] as const;
+
+export type AllowedStreamQueryParam = (typeof ALLOWED_STREAM_QUERY_PARAMS)[number];
+
 export interface StreamStore {
   /** Streams the API currently reports. Mutate between navigations. */
   streams: StreamView[];
@@ -287,26 +302,44 @@ export async function stubApi(page: Page, store: StreamStore): Promise<void> {
       });
     }
 
+    // Reject parameters the backend OpenAPI document does not accept with 400.
+    for (const key of url.searchParams.keys()) {
+      if (!ALLOWED_STREAM_QUERY_PARAMS.includes(key as AllowedStreamQueryParam)) {
+        return route.fulfill({
+          status: 400,
+          headers: { "content-type": "application/json", ...corsHeaders() },
+          body: JSON.stringify({ error: `Unknown query parameter: ${key}` }),
+        });
+      }
+    }
+
     const sender = url.searchParams.get("sender");
     const recipient = url.searchParams.get("recipient");
+    const status = url.searchParams.get("status");
     const streams = store.streams.filter((s) => {
-      if (sender) return s.sender === sender;
-      if (recipient) return s.recipient === recipient;
+      if (sender && s.sender !== sender) return false;
+      if (recipient && s.recipient !== recipient) return false;
+      if (status && s.status !== status) return false;
       return true;
     });
     const total = streams.length;
     const limit = Number(url.searchParams.get("limit") ?? total);
     const offset = Number(url.searchParams.get("offset") ?? 0);
+    const includeTotal = url.searchParams.get("includeTotal") === "true";
+
+    const body: Record<string, unknown> = {
+      streams: streams.slice(offset, offset + limit),
+      limit,
+      offset,
+    };
+    if (includeTotal) {
+      body.total = total;
+    }
 
     return route.fulfill({
       status: 200,
       headers: { "content-type": "application/json", ...corsHeaders() },
-      body: JSON.stringify({
-        streams: streams.slice(offset, offset + limit),
-        total,
-        limit,
-        offset,
-      }),
+      body: JSON.stringify(body),
     });
   });
 }

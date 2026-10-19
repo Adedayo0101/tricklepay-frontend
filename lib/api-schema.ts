@@ -141,7 +141,10 @@ export function parseStreamListResponse(value: unknown): StreamListResponse {
 
   streams.forEach((stream, index) => parseStreamView(stream, `response.streams[${index}]`));
 
-  requireCount(value, "total");
+  if (value.total !== undefined) requireCount(value, "total");
+  if (value.nextCursor !== undefined && typeof value.nextCursor !== "string") {
+    fail("response.nextCursor", "must be a string", value.nextCursor);
+  }
   // `limit`/`offset` are echoed back by the backend but the frontend paginates
   // from its own counters, so they are only checked when present rather than
   // failing a page whose rows are perfectly usable.

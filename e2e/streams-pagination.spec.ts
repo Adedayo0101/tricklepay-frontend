@@ -40,3 +40,24 @@ test("loads another page of streams from the dashboard", async ({ page }) => {
   await expect(incoming.getByRole("link", { name: /#26/ })).toBeVisible();
   await expect(incoming.getByRole("button", { name: /Load more/ })).toHaveCount(0);
 });
+
+test("rejects undocumented query parameters with 400 and omits total without includeTotal", async ({ page }) => {
+  const store: StreamStore = { streams: [] };
+  await stubApi(page, store);
+
+  // Unknown parameters return 400
+  const resBad = await page.request.get("http://localhost:3000/streams?foo=bar");
+  expect(resBad.status()).toBe(400);
+
+  // Without includeTotal, total is omitted
+  const resNoTotal = await page.request.get("http://localhost:3000/streams");
+  expect(resNoTotal.status()).toBe(200);
+  const dataNoTotal = await resNoTotal.json();
+  expect(dataNoTotal.total).toBeUndefined();
+
+  // With includeTotal=true, total is returned
+  const resWithTotal = await page.request.get("http://localhost:3000/streams?includeTotal=true");
+  expect(resWithTotal.status()).toBe(200);
+  const dataWithTotal = await resWithTotal.json();
+  expect(dataWithTotal.total).toBe(0);
+});

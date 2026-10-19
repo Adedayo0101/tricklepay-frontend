@@ -142,7 +142,7 @@ describe("useStreamPage — load error", () => {
 
     expect(listStreams).toHaveBeenCalledTimes(1);
     expect(listStreams).toHaveBeenCalledWith(
-      { sender: ADDRESS, limit: PAGE_SIZE, offset: 0, status: "all" },
+      { sender: ADDRESS, limit: PAGE_SIZE, offset: 0, status: "all", includeTotal: true },
       expect.objectContaining({ signal: expect.any(AbortSignal) }),
     );
     expect(page.error).toBe("Network unreachable");
