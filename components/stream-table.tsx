@@ -87,7 +87,7 @@ export function StreamTable({
                       markNavigatingToStream(window.location.search);
                     }
                   }}
-                  className="font-mono text-neutral-300 hover:text-neutral-100 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-400 rounded"
+                  className="inline-flex items-center min-h-[44px] min-w-[44px] font-mono text-neutral-300 hover:text-neutral-100 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-400 rounded"
                 >
                   #{stream.id}
                 </Link>

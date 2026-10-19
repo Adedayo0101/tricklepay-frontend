@@ -26,8 +26,10 @@ export function StreamStatusBadge({
   if (variant === "plain") {
     return (
       <span
+        data-status-badge="plain"
+        data-status={status}
         className={[
-          "rounded bg-neutral-800 px-2 py-0.5 text-xs capitalize text-neutral-300",
+          "rounded bg-neutral-800 px-2 py-0.5 text-xs capitalize text-neutral-300 forced-colors:border forced-colors:border-[ButtonBorder]",
           className,
         ]
           .filter(Boolean)
@@ -42,8 +44,10 @@ export function StreamStatusBadge({
   const colors = STREAM_STATUS_COLORS[status];
   return (
     <span
+      data-status-badge="colored"
+      data-status={status}
       className={[
-        "inline-flex items-center gap-1 rounded px-2 py-0.5 text-xs font-medium capitalize",
+        "inline-flex items-center gap-1 rounded px-2 py-0.5 text-xs font-medium capitalize forced-colors:border forced-colors:border-[ButtonBorder]",
         colors.pill,
         className,
       ]

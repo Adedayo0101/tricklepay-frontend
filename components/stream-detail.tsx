@@ -100,7 +100,7 @@ export function StreamDetail({ stream, onComplete }: { stream: StreamView; onCom
             setSessionItem("tricklepay:from_stream_detail", "true");
             router.back();
           }}
-          className="text-xs text-neutral-500 hover:text-neutral-300"
+          className="inline-flex items-center min-h-[44px] px-2 py-2 text-xs text-neutral-500 hover:text-neutral-300"
         >
           &larr; Back
         </button>

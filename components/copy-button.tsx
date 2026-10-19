@@ -34,7 +34,7 @@ export function CopyButton({ value, label }: { value: string; label: string }): 
       onClick={() => void copy()}
       title={copied ? `Copied ${label}!` : `Copy ${label}`}
       aria-label={copied ? `Copied ${label}` : `Copy ${label}`}
-      className={`inline-flex items-center gap-1 rounded px-1 py-0.5 text-xs transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-400 focus-visible:ring-offset-1 ${
+      className={`inline-flex items-center justify-center gap-1 min-h-[44px] min-w-[44px] rounded px-2.5 py-2 text-xs transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-400 focus-visible:ring-offset-1 ${
         copied
           ? "text-green-400"
           : "text-neutral-500 hover:text-neutral-300"

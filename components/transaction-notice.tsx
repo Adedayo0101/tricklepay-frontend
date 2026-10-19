@@ -41,7 +41,7 @@ export function TransactionNotice({ message, hash, onDismiss }: Props): JSX.Elem
       <button
         onClick={onDismiss}
         aria-label="Dismiss notice"
-        className="text-emerald-300 hover:text-emerald-100"
+        className="inline-flex items-center justify-center min-h-[44px] min-w-[44px] p-2 text-base text-emerald-300 hover:text-emerald-100"
       >
         &times;
       </button>

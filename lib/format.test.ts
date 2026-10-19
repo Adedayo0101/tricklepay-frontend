@@ -4,6 +4,8 @@ import {
   formatAmount,
   formatDuration,
   formatMaxWithdrawHint,
+  formatTime,
+  DEFAULT_TIME_FORMAT_OPTIONS,
   formatTokenAmount,
   formatTokenRate,
   formatTokenDisplay,
@@ -315,3 +317,44 @@ describe("timeAgo", () => {
     vi.useRealTimers();
   });
 });
+
+describe("formatTime", () => {
+  // 1767268800 is 2026-01-01 12:00:00 UTC
+  const FIXED_UNIX = "1767268800";
+
+  it("pins the formatted output for a fixed locale and UTC zone", () => {
+    const formatted = formatTime(FIXED_UNIX, { timeZone: "UTC" }, "en-US");
+    expect(formatted).toBe("Jan 1, 2026, 12:00 PM UTC");
+  });
+
+  it("pins the formatted output for another fixed time zone (America/New_York)", () => {
+    const formatted = formatTime(FIXED_UNIX, { timeZone: "America/New_York" }, "en-US");
+    expect(formatted).toBe("Jan 1, 2026, 7:00 AM EST");
+  });
+
+  it("ensures the time zone name is visible in the formatted string", () => {
+    const formatted = formatTime(FIXED_UNIX, { timeZone: "UTC" });
+    expect(formatted).toContain("UTC");
+  });
+
+  it("allows overriding specific Intl options while retaining defaults", () => {
+    const formatted = formatTime(
+      FIXED_UNIX,
+      { timeZone: "UTC", hour12: false },
+      "en-US",
+    );
+    expect(formatted).toBe("Jan 1, 2026, 12:00 UTC");
+  });
+
+  it("exports explicit default format options covering date, time, and timezone", () => {
+    expect(DEFAULT_TIME_FORMAT_OPTIONS).toEqual({
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+      timeZoneName: "short",
+    });
+  });
+});
+
