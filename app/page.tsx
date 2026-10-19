@@ -101,7 +101,7 @@ function StreamSection({
             onClick={page.refresh}
             disabled={page.loading || page.loadingMore}
             aria-label={`Refresh ${title.toLowerCase()} streams`}
-            className="inline-flex items-center gap-1 rounded border border-neutral-800 px-2 py-0.5 text-xs text-neutral-500 hover:border-neutral-600 hover:text-neutral-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-400 focus-visible:ring-offset-1 disabled:opacity-40"
+            className="inline-flex items-center justify-center min-h-[44px] gap-1 rounded border border-neutral-800 px-3 py-2 text-xs text-neutral-500 hover:border-neutral-600 hover:text-neutral-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-400 focus-visible:ring-offset-1 disabled:opacity-40"
           >
             {/* refresh / rotate icon */}
             <svg
@@ -128,7 +128,7 @@ function StreamSection({
             }
             disabled={page.streams.length === 0}
             aria-label={`Export ${title.toLowerCase()} streams as CSV`}
-            className="inline-flex items-center gap-1 rounded border border-neutral-800 px-2 py-0.5 text-xs text-neutral-500 hover:border-neutral-600 hover:text-neutral-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-400 focus-visible:ring-offset-1 disabled:opacity-40"
+            className="inline-flex items-center justify-center min-h-[44px] gap-1 rounded border border-neutral-800 px-3 py-2 text-xs text-neutral-500 hover:border-neutral-600 hover:text-neutral-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-400 focus-visible:ring-offset-1 disabled:opacity-40"
           >
             {/* download icon */}
             <svg
@@ -160,7 +160,7 @@ function StreamSection({
           <button
             onClick={page.refresh}
             disabled={page.loading}
-            className="rounded border border-neutral-700 px-2 py-0.5 text-xs text-neutral-400 hover:border-neutral-500 hover:text-neutral-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-400 focus-visible:ring-offset-1 disabled:opacity-40"
+            className="inline-flex items-center justify-center min-h-[44px] min-w-[44px] rounded border border-neutral-700 px-3 py-2 text-xs text-neutral-400 hover:border-neutral-500 hover:text-neutral-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-400 focus-visible:ring-offset-1 disabled:opacity-40"
           >
             Retry
           </button>
@@ -177,7 +177,7 @@ function StreamSection({
         <button
           onClick={page.loadMore}
           disabled={page.loadingMore}
-          className="mt-4 rounded-full border border-neutral-800 px-4 py-1.5 text-xs text-neutral-300 hover:border-neutral-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-400 focus-visible:ring-offset-2 disabled:opacity-50"
+          className="mt-4 inline-flex items-center justify-center min-h-[44px] rounded-full border border-neutral-800 px-4 py-2 text-xs text-neutral-300 hover:border-neutral-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-400 focus-visible:ring-offset-2 disabled:opacity-50"
         >
           {page.loadingMore
             ? "Loading more…"
@@ -320,7 +320,7 @@ function Dashboard() {
           <button
             onClick={() => setAddressQuery("")}
             aria-label="Clear address search"
-            className="rounded border border-neutral-700 px-2 py-1 text-xs text-neutral-500 hover:border-neutral-500 hover:text-neutral-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-400 focus-visible:ring-offset-2"
+            className="inline-flex items-center justify-center min-h-[44px] min-w-[44px] rounded border border-neutral-700 px-3 py-2 text-xs text-neutral-500 hover:border-neutral-500 hover:text-neutral-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-400 focus-visible:ring-offset-2"
           >
             Clear
           </button>
@@ -337,7 +337,7 @@ function Dashboard() {
             key={option.value}
             onClick={() => setFilter(option.value)}
             aria-pressed={filter === option.value}
-            className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-400 focus-visible:ring-offset-2 ${
+            className={`inline-flex items-center justify-center min-h-[44px] gap-1.5 rounded-full border px-3.5 py-2 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-400 focus-visible:ring-offset-2 ${
               filter === option.value
                 ? "border-neutral-400 bg-neutral-800 text-neutral-100"
                 : "border-neutral-800 text-neutral-400 hover:border-neutral-600"
@@ -350,7 +350,7 @@ function Dashboard() {
           <button
             onClick={() => setFilter("all")}
             aria-label="Clear filter"
-            className="inline-flex items-center gap-1 rounded-full border border-neutral-700 px-3 py-1 text-xs text-neutral-500 transition-colors hover:border-neutral-500 hover:text-neutral-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-400 focus-visible:ring-offset-2"
+            className="inline-flex items-center justify-center min-h-[44px] gap-1 rounded-full border border-neutral-700 px-3.5 py-2 text-xs text-neutral-500 transition-colors hover:border-neutral-500 hover:text-neutral-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-400 focus-visible:ring-offset-2"
           >
             {/* × icon */}
             <svg
@@ -376,7 +376,7 @@ function Dashboard() {
               const value = e.target.value;
               if (isStreamSortOption(value)) setSort(value);
             }}
-            className="rounded border border-neutral-700 bg-neutral-900 px-2 py-1 text-xs text-neutral-200 focus:border-neutral-500 focus-visible:outline-none"
+            className="min-h-[44px] rounded border border-neutral-700 bg-neutral-900 px-3 py-2 text-xs text-neutral-200 focus:border-neutral-500 focus-visible:outline-none"
           >
             {STREAM_SORT_OPTIONS.map((option) => (
               <option key={option.value} value={option.value}>

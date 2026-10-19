@@ -80,3 +80,41 @@
     scroll-behavior: auto !important;
   }
 }
+
+/* ── FORCED COLORS (HIGH CONTRAST) ──────────────────────────────────────────
+   In Windows High Contrast / forced-colors: active mode, background colors are
+   overridden by the OS palette. Status badges, legend indicators, and progress
+   bars use system colors (CanvasText, Highlight, ButtonBorder) and explicit
+   borders so status, indicators, and progress remain distinguishable. */
+@media (forced-colors: active) {
+  /* Status badges: visible border using system ButtonBorder */
+  [data-status-badge],
+  .status-badge {
+    border: 1px solid ButtonBorder !important;
+  }
+
+  /* Status legend: ensure dot indicators maintain visible boundary */
+  [data-status-dot],
+  .status-dot {
+    border: 1px solid CanvasText !important;
+    forced-color-adjust: none;
+  }
+
+  /* Progress bar track & fill: explicit border and system Highlight */
+  [role="progressbar"] {
+    border: 1px solid CanvasText !important;
+  }
+
+  [role="progressbar"] > div {
+    background-color: Highlight !important;
+    forced-color-adjust: none;
+  }
+
+  /* Cliff marker on progress bar */
+  [data-testid="cliff-marker"] {
+    background-color: Highlight !important;
+    border: 1px solid CanvasText !important;
+    forced-color-adjust: none;
+  }
+}
+

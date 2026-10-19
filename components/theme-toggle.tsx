@@ -14,7 +14,7 @@ export function ThemeToggle(): JSX.Element {
       onClick={toggleTheme}
       aria-label={isLight ? "Switch to dark theme" : "Switch to light theme"}
       title={isLight ? "Switch to dark theme" : "Switch to light theme"}
-      className="inline-flex items-center justify-center rounded border border-neutral-700 p-1.5 text-neutral-400 transition-colors hover:border-neutral-500 hover:text-neutral-200"
+      className="inline-flex items-center justify-center min-h-[44px] min-w-[44px] rounded border border-neutral-700 p-2.5 text-neutral-400 transition-colors hover:border-neutral-500 hover:text-neutral-200"
     >
       {isLight ? (
         /* moon icon — currently light, click to switch to dark */

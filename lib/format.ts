@@ -102,14 +102,31 @@ export function truncateAddress(address: string): string {
   return `${address.slice(0, ADDRESS_EDGE_LENGTH)}...${address.slice(-ADDRESS_EDGE_LENGTH)}`;
 }
 
+export const DEFAULT_TIME_FORMAT_OPTIONS: Intl.DateTimeFormatOptions = {
+  year: "numeric",
+  month: "short",
+  day: "numeric",
+  hour: "numeric",
+  minute: "2-digit",
+  timeZoneName: "short",
+};
+
 /**
- * Renders a Unix-second timestamp string as a local date and time.
+ * Renders a Unix-second timestamp string with explicit date, time, and timezone options.
  *
  * @param unixSeconds - Unix timestamp in seconds, as a string
- * @returns Localized date and time string (format depends on user's locale)
+ * @param options - Optional Intl.DateTimeFormatOptions to override defaults
+ * @param locale - Optional BCP 47 language tag (e.g. "en-US")
+ * @returns Formatted date and time string with visible timezone
  */
-export function formatTime(unixSeconds: string): string {
-  return new Date(Number(unixSeconds) * MS_PER_SECOND).toLocaleString();
+export function formatTime(
+  unixSeconds: string,
+  options?: Intl.DateTimeFormatOptions,
+  locale?: string,
+): string {
+  const date = new Date(Number(unixSeconds) * MS_PER_SECOND);
+  const opts = { ...DEFAULT_TIME_FORMAT_OPTIONS, ...options };
+  return new Intl.DateTimeFormat(locale, opts).format(date);
 }
 
 /**

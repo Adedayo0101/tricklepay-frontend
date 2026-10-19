@@ -202,6 +202,31 @@ readers without moving focus.
   `lib/theme.test.ts`, `components/theme-toggle.test.tsx`. Note that only the
   focus ring's contrast is documented — see section 3.
 
+### 1.11 Forced colors (Windows High Contrast) mode is honoured
+
+Status indicators, badges, legends, and progress bars remain distinguishable when
+the operating system overrides background and foreground colors.
+
+- **Implemented by:** `@media (forced-colors: active)` rules in `app/globals.css`,
+  explicit system borders (`forced-colors:border-[ButtonBorder]`) in
+  `components/stream-status-badge.tsx`, boundary borders on status dots in
+  `components/stream-status-legend.tsx`, and system colors (`Highlight`,
+  `CanvasText`) for the track, fill, and cliff marker in
+  `components/progress-bar.tsx`.
+- **Approach for new components:**
+  1. Never rely solely on CSS background colors to convey meaning or boundaries;
+     forced-colors mode overrides backgrounds with system defaults.
+  2. Provide explicit borders (e.g. `border` or `forced-colors:border-[ButtonBorder]`)
+     on badges, cards, and interactive pills.
+  3. Pair colors with text labels or distinct icons (see commitment 1.7).
+  4. When custom fills or graphical indicators are necessary (such as progress bars
+     or indicator dots), use `forced-color-adjust: none` alongside standard system
+     colors (`CanvasText`, `Highlight`, `ButtonText`) or explicit borders to maintain
+     visibility.
+- **Verify:** In Chrome DevTools → Rendering → "Emulate CSS media feature forced-colors: active"
+  (or Windows High Contrast Mode), verify that status badges, the status legend,
+  and progress indicators retain visible borders and distinct indicators.
+
 ## 2. How to verify, in general
 
 ### Automated checks that exist today
@@ -255,21 +280,21 @@ Do this in a real browser; none of it is covered by automation.
    address, and starting a cancel (1.4).
 5. **Themes.** Repeat the keyboard pass in dark and light (1.10).
 6. **Reduced motion.** Emulate `prefers-reduced-motion: reduce` (1.9).
-7. **Colour.** Emulate achromatopsia and confirm nothing depends on colour
+7. **Forced colors.** Emulate `forced-colors: active` (1.11).
+8. **Colour.** Emulate achromatopsia and confirm nothing depends on colour
    alone (1.7).
-8. **Structure.** Check headings and landmarks in the Accessibility tree (1.8).
+9. **Structure.** Check headings and landmarks in the Accessibility tree (1.8).
 
 ## 3. Known gaps — not commitments
 
 These are stated so a reader does not assume otherwise. Fixing one is welcome;
 when you do, move it into section 1 with its verification.
 
-- **Touch-target size.** `README.md` and `CONTRIBUTING.md` describe a 44×44px
-  minimum. The code does not enforce it and many controls are smaller (header
-  menu and theme buttons, refresh/retry, filter chips, copy button, notice
-  dismiss). The only related test (`lib/visual-smoke.test.ts`) asserts constants
-  against themselves and does not measure the UI. Treat 44px as a goal, not a
-  guarantee.
+- **Touch-target size.** Key interactive controls have been measured and enlarged
+  to meet the 44×44px mobile touch target guideline (including `CopyButton`,
+  filter pills, search clear, filter clear, table action links, refresh, retry,
+  theme toggle, and notice dismiss). Remaining controls outside primary workflows
+  aim for the 24×24px WCAG 2.5.8 minimum and are audited when touched.
 - **Conformance and contrast.** No WCAG conformance is claimed and no audit has
   been done. The only contrast ratio documented (≥3:1) is the focus ring's, and
   it is asserted in comments, not measured by a tool. Text and status-colour

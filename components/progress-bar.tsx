@@ -33,9 +33,12 @@ export function ProgressBar({
       aria-valuenow={Math.round(pct)}
       aria-valuemin={0}
       aria-valuemax={100}
-      className="h-2 w-full overflow-hidden rounded-full bg-neutral-800"
+      className="h-2 w-full overflow-hidden rounded-full bg-neutral-800 forced-colors:border forced-colors:border-[CanvasText]"
     >
-      <div className="h-full bg-neutral-300 transition-[width]" style={{ width: `${pct}%` }} />
+      <div
+        className="h-full bg-neutral-300 transition-[width] forced-colors:bg-[Highlight]"
+        style={{ width: `${pct}%` }}
+      />
     </div>
   );
 
@@ -54,12 +57,12 @@ export function ProgressBar({
         role="img"
         aria-label={cliff.label}
         data-testid="cliff-marker"
-        className="absolute -top-1 h-4 w-0.5 -translate-x-1/2 rounded bg-amber-400"
+        className="absolute -top-1 h-4 w-0.5 -translate-x-1/2 rounded bg-amber-400 forced-colors:bg-[Highlight] forced-colors:border forced-colors:border-[CanvasText]"
         style={{ left: `${cliffPct}%` }}
       />
       <span
         aria-hidden="true"
-        className="absolute top-4 whitespace-nowrap text-xs text-amber-400/80"
+        className="absolute top-4 whitespace-nowrap text-xs text-amber-400/80 forced-colors:text-[CanvasText]"
         style={labelStyle}
       >
         {cliff.label}
