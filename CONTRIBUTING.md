@@ -277,6 +277,32 @@ Updating a snapshot accepts the new rendering as correct. If you haven't explain
 why the output changed, you're silencing a regression instead of fixing it. If the
 diff is unexpected, treat it as a bug in the code and fix the code.
 
+### 5. Git Pre-Commit Hook
+
+A local pre-commit hook runs linting and type checking on staged files before each commit to catch regressions early without waiting for CI.
+
+#### Installation
+Configure the hook by running:
+```bash
+npm run setup-hooks
+```
+*(Running `npm install` also invokes `npm run prepare`, which automatically sets `core.hooksPath` to `.githooks`.)*
+
+#### What It Runs
+- **Lint**: Runs `eslint` on staged TypeScript and JavaScript files (`.ts`, `.tsx`, `.js`, `.mjs`).
+- **Typecheck**: Runs `npm run typecheck` (`tsc --noEmit`) to verify project types.
+
+#### Bypassing the Hook
+If you knowingly need to bypass the pre-commit checks (e.g. for temporary work-in-progress commits):
+- Use git's `--no-verify` (or `-n`) option:
+  ```bash
+  git commit -m "wip: checkpoint changes" --no-verify
+  ```
+- Or set the `SKIP_HOOKS` environment variable:
+  ```bash
+  SKIP_HOOKS=1 git commit -m "wip: checkpoint changes"
+  ```
+
 ---
 
 ## 📩 Submitting a Pull Request
