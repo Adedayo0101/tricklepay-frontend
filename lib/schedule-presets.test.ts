@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   applySchedulePreset,
@@ -70,3 +70,42 @@ describe("applySchedulePreset", () => {
   });
 });
 
+
+// Expected start/end/cliff per preset with the clock pinned. Keyed by id so a
+// new preset without an entry here fails the coverage test below (#464).
+const EXPECTED_FROM_NOW: Record<string, { end: string; cliff: string | null }> = {
+  "one-month-linear": { end: "2026-02-15T12:00", cliff: null },
+  "one-year-three-month-cliff": { end: "2027-01-15T12:00", cliff: "2026-04-15T12:00" },
+  "four-years-one-year-cliff": { end: "2030-01-15T12:00", cliff: "2027-01-15T12:00" },
+};
+
+describe("applySchedulePreset with a controlled clock", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-01-15T12:00:00"));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("has an expectation for every preset", () => {
+    expect(Object.keys(EXPECTED_FROM_NOW).sort()).toEqual(
+      SCHEDULE_PRESETS.map((p) => p.id).sort(),
+    );
+  });
+
+  it.each(SCHEDULE_PRESETS.map((p) => [p.id, p] as const))(
+    "%s starts now and sets the intended end and cliff",
+    (id, preset) => {
+      // No explicit `now`: the default must come from the (faked) clock.
+      const schedule = applySchedulePreset(preset, "");
+      expect(schedule).toEqual({ start: "2026-01-15T12:00", ...EXPECTED_FROM_NOW[id] });
+    },
+  );
+
+  it("keeps an entered start instead of using the clock", () => {
+    const preset = SCHEDULE_PRESETS[0];
+    expect(applySchedulePreset(preset, "2026-03-31T09:30")?.start).toBe("2026-03-31T09:30");
+  });
+});

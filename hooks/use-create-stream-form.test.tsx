@@ -19,6 +19,7 @@ vi.mock("next/navigation", () => ({
 
 import { useWallet } from "@/components/wallet-provider";
 import { useNetworkGuard } from "@/hooks/use-network-guard";
+import { SCHEDULE_PRESETS } from "@/lib/schedule-presets";
 
 import { useCreateStreamForm, type CreateStreamForm } from "./use-create-stream-form";
 
@@ -393,6 +394,29 @@ describe("useCreateStreamForm", () => {
     expect(latest.values.durationAmount).toBe("1");
     expect(latest.values.durationUnit).toBe("years");
   });
+
+  it.each(SCHEDULE_PRESETS.map((p) => [p.id] as const))(
+    "preset %s leaves recipient, token and amount untouched",
+    async (presetId) => {
+      await renderForm();
+
+      await act(async () => {
+        latest.setField("recipient", RECIPIENT);
+        latest.setField("token", TOKEN);
+        latest.setField("amount", "50");
+        latest.setField("start", "2026-08-27T10:00");
+      });
+
+      await act(async () => {
+        latest.applyPreset(presetId);
+      });
+
+      expect(latest.values.recipient).toBe(RECIPIENT);
+      expect(latest.values.token).toBe(TOKEN);
+      expect(latest.values.amount).toBe("50");
+      expect(latest.values.start).toBe("2026-08-27T10:00");
+    },
+  );
 
   it("applies schedule presets without touching recipient, token, or amount", async () => {
     await renderForm();

@@ -89,7 +89,9 @@ user-facing message:
 This table mirrors `StreamError` in the contract's `error.rs` — if the
 contract adds, removes, or renumbers a variant, this table (and
 `lib/contract-errors.test.ts`, which asserts the table's key set exactly)
-needs updating to match. A code with no entry falls back to the generic
+needs updating to match — see
+[adding-contract-error-messages.md](adding-contract-error-messages.md) for the
+full checklist. A code with no entry falls back to the generic
 `GENERIC_FAILURE` — "The transaction failed on-chain." — with the raw code
 appended for debugging ("... (error code 99)"), rather than surfacing
 nothing. A string with no `Error(Contract, #N)` token at all maps to the same

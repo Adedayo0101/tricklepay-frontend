@@ -43,6 +43,7 @@ See also [Running locally](#running-locally) for the short version,
   - [Running unit tests (Vitest)](#running-unit-tests-vitest)
   - [Running end-to-end tests (Playwright)](#running-end-to-end-tests-playwright)
   - [Full local setup guide](docs/local-setup.md)
+- [Analyzing bundle size](#analyzing-bundle-size)
 - [Configuration](#configuration)
   - [Switching Contracts](#switching-contracts)
 - [Troubleshooting](#troubleshooting)
@@ -216,6 +217,25 @@ time.
 - a step-by-step way to verify the setup works,
 - the errors a first run tends to produce, and what each one means,
 - the full command reference, including the Playwright browser download.
+
+## Analyzing bundle size
+
+To see what ends up in the JavaScript bundles (for example, to check whether a
+new dependency grew the first-load size), run:
+
+```bash
+npm run analyze
+```
+
+This runs a normal production build with `ANALYZE=true`, which enables
+[`@next/bundle-analyzer`](https://www.npmjs.com/package/@next/bundle-analyzer).
+It writes interactive treemap reports to `.next/analyze/` — `client.html`,
+`nodejs.html` and `edge.html` — which you can open in a browser. Compare the
+`client.html` report before and after a dependency change.
+
+The build still needs the same environment as `npm run build`
+(`NEXT_PUBLIC_CONTRACT_ID` must be set). Without `ANALYZE=true` the analyzer is
+disabled, so `npm run build` and deployments are unaffected.
 
 ## Configuration
 
