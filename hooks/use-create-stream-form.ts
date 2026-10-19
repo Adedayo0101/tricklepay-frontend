@@ -34,6 +34,7 @@ import {
   getCachedTokenDecimals,
   readTokenDecimals,
 } from "@/lib/token-decimals";
+import { getCachedTokenMetadata, readTokenMetadata } from "@/lib/token-metadata";
 import { isValidContractAddress, parseAmount, toUnix } from "@/lib/validation";
 import { vestingRatePerDay } from "@/lib/vesting";
 import type { BalanceCheck, CreateStreamParams, FeeEstimate, TxStage } from "@/types/contract";
@@ -195,6 +196,10 @@ export function useCreateStreamForm(): CreateStreamForm {
     }
 
     let active = true;
+    if (!getCachedTokenMetadata(token)) {
+      readTokenMetadata(token).catch(() => {});
+    }
+
     readTokenDecimals(token)
       .then((dec) => {
         if (!active) return;

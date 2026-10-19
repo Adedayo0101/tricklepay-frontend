@@ -138,16 +138,22 @@ export function StreamReview({ params, feeEstimate, balanceCheck, decimals, subm
           <AddressRow label="Recipient" address={params.recipient} />
           <TokenContractRow token={params.token} />
           <Row label="Amount">
-            {formatTokenAmount(params.totalAmount.toString(), params.token, decimals)}
+            <span title={params.token}>
+              {formatTokenAmount(params.totalAmount.toString(), params.token, decimals)}
+            </span>
           </Row>
-          <Row label="Your balance">{balanceText(balanceCheck, params.token, decimals)}</Row>
+          <Row label="Your balance">
+            <span title={params.token}>{balanceText(balanceCheck, params.token, decimals)}</span>
+          </Row>
           <Row label="Vesting rate">
-            {formatTokenRate(
-              vestingRatePerDay(params.totalAmount, params.startTime, params.endTime)?.toString() ?? "0",
-              params.token,
-              "day",
-              decimals,
-            )}
+            <span title={params.token}>
+              {formatTokenRate(
+                vestingRatePerDay(params.totalAmount, params.startTime, params.endTime)?.toString() ?? "0",
+                params.token,
+                "day",
+                decimals,
+              )}
+            </span>
           </Row>
           <Row label="Duration">
             {formatDuration(params.endTime - params.startTime) ?? "—"}

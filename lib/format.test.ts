@@ -14,6 +14,7 @@ import {
   timeRemaining,
   truncateAddress,
 } from "@/lib/format";
+import { clearTokenMetadataCache, setCachedTokenMetadata } from "@/lib/token-metadata";
 
 describe("formatAmount", () => {
   it("formats whole amounts without a decimal point", () => {
@@ -148,6 +149,16 @@ describe("formatTokenDisplay", () => {
     ).toBe("USDC");
   });
 
+  it("returns the symbol for a dynamically cached token contract", () => {
+    const DYNAMIC_TOKEN = "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM";
+    setCachedTokenMetadata(DYNAMIC_TOKEN, { symbol: "EURC", name: "Euro Coin" });
+    try {
+      expect(formatTokenDisplay(DYNAMIC_TOKEN)).toBe("EURC");
+    } finally {
+      clearTokenMetadataCache();
+    }
+  });
+
   it("falls back to the truncated address for unknown contracts", () => {
     expect(formatTokenDisplay("CABCDEFGHIJKLMNOPQRSTUVWXYZ234567")).toBe("CABC...4567");
   });
@@ -160,6 +171,16 @@ describe("formatTokenAmount", () => {
     expect(formatTokenAmount("12500000", USDC_CONTRACT)).toBe("1.25 USDC");
   });
 
+  it("appends the symbol for a dynamically cached token contract", () => {
+    const DYNAMIC_TOKEN = "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM";
+    setCachedTokenMetadata(DYNAMIC_TOKEN, { symbol: "EURC", name: "Euro Coin" });
+    try {
+      expect(formatTokenAmount("12500000", DYNAMIC_TOKEN)).toBe("1.25 EURC");
+    } finally {
+      clearTokenMetadataCache();
+    }
+  });
+
   it("keeps an unknown token amount compact", () => {
     expect(formatTokenAmount("12500000", "CUNKNOWN")).toBe("1.25");
   });
@@ -170,6 +191,16 @@ describe("formatTokenRate", () => {
 
   it("uses the symbol in a known-token rate", () => {
     expect(formatTokenRate("12500000", USDC_CONTRACT)).toBe("1.25 USDC/day");
+  });
+
+  it("uses the symbol for a dynamically cached token contract", () => {
+    const DYNAMIC_TOKEN = "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM";
+    setCachedTokenMetadata(DYNAMIC_TOKEN, { symbol: "EURC", name: "Euro Coin" });
+    try {
+      expect(formatTokenRate("12500000", DYNAMIC_TOKEN)).toBe("1.25 EURC/day");
+    } finally {
+      clearTokenMetadataCache();
+    }
   });
 
   it("keeps an unknown-token rate readable", () => {

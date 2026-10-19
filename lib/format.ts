@@ -11,30 +11,33 @@ const SECONDS_PER_MINUTE = 60;
 const SECONDS_PER_HOUR = 3600;
 const SECONDS_PER_DAY = 86400;
 
-export interface TokenMetadata {
-  name: string;
-  symbol: string;
-}
+import {
+  getCachedTokenMetadata,
+  KNOWN_TOKEN_METADATA,
+  type TokenMetadata,
+} from "@/lib/token-metadata";
 
-const TOKEN_METADATA: Record<string, TokenMetadata> = {
-  // Known token contracts used in the app and its fixtures.
-  CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC: {
-    name: "USD Coin",
-    symbol: "USDC",
-  },
-};
+export type { TokenMetadata };
 
 /**
  * Resolves token metadata by contract address.
  *
+ * Checks dynamically cached metadata first, falling back to the hard-coded
+ * table of known tokens.
+ *
  * @param tokenAddress - Stellar contract address of the token
- * @returns Token metadata (name and symbol) if known, otherwise null
+ * @returns Token metadata (name and symbol) if known or cached, otherwise null
  */
 export function resolveTokenMetadata(tokenAddress: string): TokenMetadata | null {
   const candidate = tokenAddress.trim();
   if (!candidate) return null;
 
-  return TOKEN_METADATA[candidate] ?? null;
+  const cached = getCachedTokenMetadata(candidate);
+  if (cached) {
+    return cached;
+  }
+
+  return KNOWN_TOKEN_METADATA[candidate] ?? null;
 }
 
 /**
