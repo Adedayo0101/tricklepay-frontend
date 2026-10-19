@@ -176,6 +176,23 @@ function StreamSection({
         </div>
       )}
 
+      {page.refreshWarning && !page.error && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="mb-3 flex items-center justify-between gap-3 rounded border border-neutral-800 bg-neutral-900/60 px-3 py-2 text-xs text-neutral-400"
+        >
+          <span>{page.refreshWarning}</span>
+          <button
+            onClick={page.refresh}
+            disabled={page.loading}
+            className="inline-flex items-center justify-center min-h-[44px] px-3 py-1.5 text-xs font-medium text-neutral-300 hover:text-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-400 focus-visible:ring-offset-1 disabled:opacity-40"
+          >
+            Retry
+          </button>
+        </div>
+      )}
+
       {page.loading ? (
         <LoadingState variant="stream-list" label={`Loading ${title.toLowerCase()} streams`} />
       ) : (

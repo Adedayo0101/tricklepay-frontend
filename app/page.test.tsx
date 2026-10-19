@@ -55,6 +55,8 @@ function mockDisconnected() {
     hasMore: false,
     error: null,
     requestId: null,
+    consecutiveRefreshFailures: 0,
+    refreshWarning: null,
     refresh: vi.fn(),
     loadMore: vi.fn(),
     lastUpdated: null,
@@ -96,6 +98,8 @@ function mockConnectedWithData() {
     hasMore: false,
     error: null,
     requestId: null,
+    consecutiveRefreshFailures: 0,
+    refreshWarning: null,
     refresh: vi.fn(),
     loadMore: vi.fn(),
     lastUpdated: null,
@@ -201,6 +205,8 @@ describe("Dashboard Page", () => {
         hasMore: false,
         error: null,
         requestId: null,
+        consecutiveRefreshFailures: 0,
+        refreshWarning: null,
         refresh: vi.fn(),
         loadMore: vi.fn(),
         lastUpdated: null,
@@ -230,6 +236,8 @@ describe("Dashboard Page", () => {
         hasMore: false,
         error: "Database connection failed",
         requestId: "req-err-789",
+        consecutiveRefreshFailures: 0,
+        refreshWarning: null,
         refresh: vi.fn(),
         loadMore: vi.fn(),
         lastUpdated: null,
@@ -241,6 +249,37 @@ describe("Dashboard Page", () => {
       expect(htmlString).toContain("Database connection failed");
       expect(htmlString).toContain("req-err-789");
       expect(htmlString).toContain("Copy request id");
+    });
+
+    it("displays polite status message and retry action when background refreshes fail consecutively", () => {
+      vi.mocked(useWallet).mockReturnValue({
+        address: "GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN7",
+        network: "testnet",
+        connecting: false,
+        error: null,
+        connect: vi.fn(),
+        disconnect: vi.fn(),
+      });
+      vi.mocked(useStreamPage).mockReturnValue({
+        streams: [],
+        total: 0,
+        loading: false,
+        loadingMore: false,
+        hasMore: false,
+        error: null,
+        requestId: null,
+        consecutiveRefreshFailures: 3,
+        refreshWarning: "Data may be out of date.",
+        refresh: vi.fn(),
+        loadMore: vi.fn(),
+        lastUpdated: Date.now() - 60_000,
+      });
+
+      const el = Home();
+      const htmlString = renderToStaticMarkup(el);
+
+      expect(htmlString).toContain("Data may be out of date.");
+      expect(htmlString).toContain("Retry");
     });
   });
 });

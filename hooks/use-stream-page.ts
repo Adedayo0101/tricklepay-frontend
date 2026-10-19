@@ -19,6 +19,12 @@ const LIST_REFRESH_INTERVAL_MS = 15_000;
 const FIRST_PAGE_MAX_ATTEMPTS = 2;
 const FIRST_PAGE_RETRY_DELAY_MS = 500;
 
+/**
+ * Number of consecutive failed background refreshes before warning the user
+ * that displayed stream data may be out of date.
+ */
+export const CONSECUTIVE_REFRESH_FAILURES_THRESHOLD = 3;
+
 function wait(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -42,6 +48,14 @@ export interface StreamPage {
    * screen is stale, which is exactly when its last-known age matters most.
    */
   lastUpdated: number | null;
+  /**
+   * Number of consecutive failed background refreshes since the last successful fetch.
+   */
+  consecutiveRefreshFailures: number;
+  /**
+   * Status warning shown when consecutive background refreshes exceed threshold, or `null`.
+   */
+  refreshWarning: string | null;
 }
 
 function pageQuery(
@@ -105,6 +119,8 @@ export function useStreamPage(
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [requestId, setRequestId] = useState<string | null>(null);
+  const [consecutiveRefreshFailures, setConsecutiveRefreshFailures] = useState(0);
+  const [refreshWarning, setRefreshWarning] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<number | null>(null);
 
   // Bumped whenever the query changes. A request compares the generation it
@@ -148,6 +164,8 @@ export function useStreamPage(
     setFetched(0);
     setError(null);
     setRequestId(null);
+    setConsecutiveRefreshFailures(0);
+    setRefreshWarning(null);
     if (!address) return;
 
     setLoading(true);
@@ -165,6 +183,8 @@ export function useStreamPage(
           setTotal(page.total);
           setFetched(page.streams.length);
           setLastUpdated(Date.now());
+          setConsecutiveRefreshFailures(0);
+          setRefreshWarning(null);
           return;
         } catch (err) {
           endRequest(controller);
@@ -215,9 +235,19 @@ export function useStreamPage(
         setTotal(page.total);
         setFetched(page.streams.length);
         setLastUpdated(Date.now());
+        setConsecutiveRefreshFailures(0);
+        setRefreshWarning(null);
       })
-      .catch(() => {
+      .catch((err: unknown) => {
         // Background refresh failure, or cancellation: retain existing on-screen rows
+        if (isAbortError(err) || generation.current !== gen) return;
+        setConsecutiveRefreshFailures((prev) => {
+          const next = prev + 1;
+          if (next >= CONSECUTIVE_REFRESH_FAILURES_THRESHOLD) {
+            setRefreshWarning("Data may be out of date.");
+          }
+          return next;
+        });
       })
       .finally(() => {
         endRequest(controller);
@@ -270,6 +300,8 @@ export function useStreamPage(
         // rows in hand over the reported total so the button does not stick.
         setTotal(page.streams.length === 0 ? fetched : page.total);
         setLastUpdated(Date.now());
+        setConsecutiveRefreshFailures(0);
+        setRefreshWarning(null);
       })
       .catch((err: unknown) => {
         if (isAbortError(err) || generation.current !== gen) return;
@@ -300,5 +332,18 @@ export function useStreamPage(
     endRequest,
   ]);
 
-  return { streams, total, loading, loadingMore, error, requestId, hasMore, loadMore, refresh, lastUpdated };
+  return {
+    streams,
+    total,
+    loading,
+    loadingMore,
+    error,
+    requestId,
+    hasMore,
+    loadMore,
+    refresh,
+    lastUpdated,
+    consecutiveRefreshFailures,
+    refreshWarning,
+  };
 }
