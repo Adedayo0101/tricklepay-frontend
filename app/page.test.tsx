@@ -131,6 +131,9 @@ describe("Dashboard Page", () => {
     // It should render the sections
     expect(htmlString).toContain("Incoming");
     expect(htmlString).toContain("Outgoing");
+    // Search box accessible label and placeholder describe stream ID, token, and address search
+    expect(htmlString).toContain("Search by stream ID, token, or address");
+    expect(htmlString).toContain('placeholder="Search by stream ID, token, or address…"');
     // Ensure the loading state or connect prompt is NOT rendered
     expect(htmlString).not.toContain("Connect your wallet to view");
     expect(htmlString).not.toContain("Loading incoming streams");
