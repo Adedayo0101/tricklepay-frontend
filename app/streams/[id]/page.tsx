@@ -7,6 +7,7 @@ import { type JSX, useEffect, useState } from "react";
 import { LoadingState } from "@/components/loading-state";
 import { StreamDetail } from "@/components/stream-detail";
 import { useMinimumLoadingDuration } from "@/hooks/use-minimum-loading-duration";
+import { useStreamEvents } from "@/hooks/use-stream-events";
 import { useStreamTitle } from "@/hooks/use-stream-title";
 import { getStream, isAbortError } from "@/lib/api";
 import { clearReturningFromStream, setSessionItem } from "@/lib/scroll";
@@ -29,6 +30,7 @@ export default function StreamDetailPage(): JSX.Element {
   const [error, setError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
   const showInitialLoading = useMinimumLoadingDuration(loading && !stream);
+  const streamEvents = useStreamEvents(id, reloadKey);
 
   useStreamTitle(stream, id);
 
@@ -175,5 +177,14 @@ export default function StreamDetailPage(): JSX.Element {
     );
   }
 
-  return <StreamDetail stream={stream} onComplete={() => setReloadKey((k) => k + 1)} />;
+  return (
+    <StreamDetail
+      stream={stream}
+      onComplete={() => setReloadKey((k) => k + 1)}
+      events={streamEvents.events}
+      eventsLoading={streamEvents.loading}
+      eventsError={streamEvents.error}
+      onRetryEvents={streamEvents.refresh}
+    />
+  );
 }

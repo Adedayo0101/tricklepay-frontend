@@ -21,7 +21,7 @@
 import type { Page, Route } from "@playwright/test";
 import { Keypair, xdr } from "@stellar/stellar-sdk";
 
-import type { StreamView } from "../../types/stream";
+import type { StreamEvent, StreamView } from "../../types/stream";
 
 export const RPC_URL = "http://localhost:8000/soroban/rpc";
 export const API_URL = "http://localhost:3000";
@@ -265,6 +265,8 @@ export type AllowedStreamQueryParam = (typeof ALLOWED_STREAM_QUERY_PARAMS)[numbe
 export interface StreamStore {
   /** Streams the API currently reports. Mutate between navigations. */
   streams: StreamView[];
+  /** Optional per-stream event histories returned by GET /streams/:id/events. */
+  events?: Record<string, StreamEvent[]>;
 }
 
 export async function stubApi(page: Page, store: StreamStore): Promise<void> {
@@ -288,6 +290,19 @@ export async function stubApi(page: Page, store: StreamStore): Promise<void> {
 
   await page.route(`${API_URL}/streams**`, async (route: Route) => {
     const url = new URL(route.request().url());
+
+    const eventsMatch = url.pathname.match(/^\/streams\/([^/]+)\/events$/);
+    if (eventsMatch) {
+      const stream = store.streams.find((s) => s.id === eventsMatch[1]);
+      if (!stream) {
+        return route.fulfill({ status: 404, headers: corsHeaders(), body: "{}" });
+      }
+      return route.fulfill({
+        status: 200,
+        headers: { "content-type": "application/json", ...corsHeaders() },
+        body: JSON.stringify(store.events?.[eventsMatch[1]] ?? []),
+      });
+    }
 
     const byId = url.pathname.match(/^\/streams\/(.+)$/);
     if (byId) {

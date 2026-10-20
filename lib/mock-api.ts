@@ -6,7 +6,7 @@
 // streaming stream is always mid-flight and visibly accruing.
 
 import type { ListStreamsParams, StreamApiClient } from "@/lib/api";
-import type { StreamListResponse, StreamView } from "@/types/stream";
+import type { StreamEvent, StreamListResponse, StreamView } from "@/types/stream";
 
 const MOCK_SENDER = "GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN7";
 const MOCK_RECIPIENT = "GBBZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN7";
@@ -84,9 +84,147 @@ export const mockGetStream: StreamApiClient["getStream"] = async (
   return MOCK_STREAMS.find((s) => s.id === id) ?? null;
 };
 
+const MOCK_EVENTS: Record<string, StreamEvent[]> = {
+  "1": [
+    {
+      eventId: "0000000100000000-0001",
+      kind: "created",
+      streamId: "1",
+      ledger: 1000,
+      txHash: "1111111111111111111111111111111111111111111111111111111111111111",
+      sender: MOCK_SENDER,
+      recipient: MOCK_RECIPIENT,
+      token: MOCK_TOKEN,
+      totalAmount: (1_000_0000000n).toString(),
+      startTime: String(now - DAY),
+      endTime: String(now + DAY),
+      cliffTime: String(now - DAY),
+      closedAt: String(now - DAY),
+    },
+    {
+      eventId: "0000000100000500-0001",
+      kind: "withdrawn",
+      streamId: "1",
+      ledger: 1500,
+      txHash: "2222222222222222222222222222222222222222222222222222222222222222",
+      recipient: MOCK_RECIPIENT,
+      amount: (200_0000000n).toString(),
+      closedAt: String(now - 12 * HOUR),
+    },
+  ],
+  "2": [
+    {
+      eventId: "0000000200000000-0001",
+      kind: "created",
+      streamId: "2",
+      ledger: 2000,
+      txHash: "3333333333333333333333333333333333333333333333333333333333333333",
+      sender: MOCK_SENDER,
+      recipient: MOCK_RECIPIENT,
+      token: MOCK_TOKEN,
+      totalAmount: (250_0000000n).toString(),
+      startTime: String(now + 2 * DAY),
+      endTime: String(now + 9 * DAY),
+      cliffTime: String(now + 2 * DAY),
+      closedAt: String(now - HOUR),
+    },
+  ],
+  "3": [
+    {
+      eventId: "0000000300000000-0001",
+      kind: "created",
+      streamId: "3",
+      ledger: 3000,
+      txHash: "4444444444444444444444444444444444444444444444444444444444444444",
+      sender: MOCK_SENDER,
+      recipient: MOCK_RECIPIENT,
+      token: MOCK_TOKEN,
+      totalAmount: (500_0000000n).toString(),
+      startTime: String(now - 10 * DAY),
+      endTime: String(now - 3 * DAY),
+      cliffTime: String(now - 10 * DAY),
+      closedAt: String(now - 10 * DAY),
+    },
+    {
+      eventId: "0000000300000900-0001",
+      kind: "withdrawn",
+      streamId: "3",
+      ledger: 3900,
+      txHash: "5555555555555555555555555555555555555555555555555555555555555555",
+      recipient: MOCK_RECIPIENT,
+      amount: (500_0000000n).toString(),
+      closedAt: String(now - 3 * DAY),
+    },
+  ],
+  "4": [
+    {
+      eventId: "0000000400000000-0001",
+      kind: "created",
+      streamId: "4",
+      ledger: 4000,
+      txHash: "6666666666666666666666666666666666666666666666666666666666666666",
+      sender: MOCK_SENDER,
+      recipient: MOCK_RECIPIENT,
+      token: MOCK_TOKEN,
+      totalAmount: (750_0000000n).toString(),
+      startTime: String(now - 5 * DAY),
+      endTime: String(now + 5 * DAY),
+      cliffTime: String(now - 5 * DAY),
+      closedAt: String(now - 5 * DAY),
+    },
+    {
+      eventId: "0000000400000300-0001",
+      kind: "withdrawn",
+      streamId: "4",
+      ledger: 4300,
+      txHash: "7777777777777777777777777777777777777777777777777777777777777777",
+      recipient: MOCK_RECIPIENT,
+      amount: (100_0000000n).toString(),
+      closedAt: String(now - 3 * DAY),
+    },
+    {
+      eventId: "0000000400000600-0001",
+      kind: "cancelled",
+      streamId: "4",
+      ledger: 4600,
+      txHash: "8888888888888888888888888888888888888888888888888888888888888888",
+      sender: MOCK_SENDER,
+      recipient: MOCK_RECIPIENT,
+      recipientAmount: (125_0000000n).toString(),
+      senderRefund: (525_0000000n).toString(),
+      closedAt: String(now - 2 * DAY),
+    },
+  ],
+  "5": [
+    {
+      eventId: "0000000500000000-0001",
+      kind: "created",
+      streamId: "5",
+      ledger: 5000,
+      txHash: "9999999999999999999999999999999999999999999999999999999999999999",
+      sender: MOCK_SENDER,
+      recipient: MOCK_RECIPIENT,
+      token: MOCK_TOKEN,
+      totalAmount: (12_345_6789012n).toString(),
+      startTime: String(now - HOUR),
+      endTime: String(now + 30 * DAY),
+      cliffTime: String(now - HOUR),
+      closedAt: String(now - HOUR),
+    },
+  ],
+};
+
+/** Mock counterpart of `getStreamEvents`: returns the stream's event history in order. */
+export const mockGetStreamEvents: StreamApiClient["getStreamEvents"] = async (
+  id: string,
+): Promise<StreamEvent[]> => {
+  return MOCK_EVENTS[id] ?? [];
+};
+
 // Mock client, typed against the same contract as the real client in
 // `lib/api.ts` so a divergence fails the typecheck.
 export const mockApiClient: StreamApiClient = {
   listStreams: mockListStreams,
   getStream: mockGetStream,
+  getStreamEvents: mockGetStreamEvents,
 };

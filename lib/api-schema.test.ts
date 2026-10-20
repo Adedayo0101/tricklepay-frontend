@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import {
   ApiResponseError,
+  parseStreamEvent,
+  parseStreamEvents,
   parseStreamListResponse,
   parseStreamView,
 } from "./api-schema";
@@ -148,5 +150,73 @@ describe("parseStreamListResponse", () => {
     expect(() =>
       parseStreamListResponse({ streams: [], total: 0, offset: -1 }),
     ).toThrow(/response\.offset must be a non-negative integer/);
+  });
+});
+
+function validEvent(overrides: Record<string, unknown> = {}) {
+  return {
+    eventId: "0000000100000000-0001",
+    kind: "created",
+    streamId: "1",
+    ledger: 1000,
+    txHash: "1111111111111111111111111111111111111111111111111111111111111111",
+    sender: "GAAA",
+    recipient: "GBBB",
+    token: "CCCC",
+    totalAmount: "10000000",
+    amount: null,
+    recipientAmount: null,
+    senderRefund: null,
+    startTime: "100",
+    endTime: "200",
+    cliffTime: "100",
+    closedAt: "100",
+    ...overrides,
+  };
+}
+
+describe("parseStreamEvent and parseStreamEvents", () => {
+  it("accepts valid created, withdrawn, and cancelled events", () => {
+    const events = [
+      validEvent({ kind: "created" }),
+      validEvent({
+        eventId: "0000000100000100-0001",
+        kind: "withdrawn",
+        amount: "2500000",
+        totalAmount: null,
+      }),
+      validEvent({
+        eventId: "0000000100000200-0001",
+        kind: "cancelled",
+        recipientAmount: "2500000",
+        senderRefund: "5000000",
+        totalAmount: null,
+      }),
+    ];
+    expect(parseStreamEvents(events)).toBe(events);
+  });
+
+  it("rejects a non-array event history payload", () => {
+    expect(() => parseStreamEvents({ events: [] })).toThrow(
+      /response must be an array/,
+    );
+  });
+
+  it("rejects an unknown event kind", () => {
+    expect(() => parseStreamEvent(validEvent({ kind: "paused" }))).toThrow(
+      /response\.kind must be one of created, withdrawn, cancelled/,
+    );
+  });
+
+  it("rejects a negative ledger number", () => {
+    expect(() => parseStreamEvent(validEvent({ ledger: -1 }))).toThrow(
+      /response\.ledger must be a non-negative integer/,
+    );
+  });
+
+  it("rejects an amount that is not a decimal integer string", () => {
+    expect(() =>
+      parseStreamEvents([validEvent(), validEvent({ amount: 500 })]),
+    ).toThrow(/response\[1\]\.amount must be a string/);
   });
 });
