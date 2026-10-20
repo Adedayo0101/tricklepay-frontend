@@ -122,6 +122,69 @@ export function isTimeoutError(error: unknown): error is ApiTimeoutError {
   return error instanceof ApiTimeoutError;
 }
 
+/**
+ * Thrown when the backend responds with a non-OK status.
+ * Preserves the backend's error code, error message, and requestId when present.
+ */
+export class ApiError extends Error {
+  readonly status: number;
+  readonly code?: string;
+  readonly backendError?: string;
+  readonly requestId?: string;
+
+  constructor(
+    message: string,
+    options: {
+      status: number;
+      code?: string;
+      error?: string;
+      requestId?: string;
+    },
+  ) {
+    super(message);
+    this.name = "ApiError";
+    this.status = options.status;
+    this.code = options.code;
+    this.backendError = options.error;
+    this.requestId = options.requestId;
+  }
+
+  get error(): string | undefined {
+    return this.backendError;
+  }
+}
+
+export function isApiError(error: unknown): error is ApiError {
+  return error instanceof ApiError;
+}
+
+async function createApiError(res: Response, fallbackPrefix: string): Promise<ApiError> {
+  let body: unknown;
+  try {
+    body = await res.json();
+  } catch {
+    body = null;
+  }
+
+  const payload =
+    typeof body === "object" && body !== null
+      ? (body as Record<string, unknown>)
+      : undefined;
+
+  const code = typeof payload?.code === "string" ? payload.code : undefined;
+  const backendError = typeof payload?.error === "string" ? payload.error : undefined;
+  const requestId = typeof payload?.requestId === "string" ? payload.requestId : undefined;
+
+  const message = backendError || `${fallbackPrefix} (${res.status})`;
+
+  return new ApiError(message, {
+    status: res.status,
+    code,
+    error: backendError,
+    requestId,
+  });
+}
+
 // Reads the response body as JSON. A body that is not JSON at all (an HTML
 // error page from a proxy, an empty 200) is reported the same way a
 // structurally wrong payload is, so callers only have one failure mode to
@@ -228,7 +291,7 @@ export async function listStreams(
 
   return request(url, "the stream list", options, async (res) => {
     if (!res.ok) {
-      throw new Error(`Failed to load streams (${res.status})`);
+      throw await createApiError(res, "Failed to load streams");
     }
     return parseStreamListResponse(await readJson(res, "the stream list"));
   });
@@ -251,7 +314,7 @@ export async function getStream(
   return request(url, `stream ${id}`, options, async (res) => {
     if (res.status === 404) return null;
     if (!res.ok) {
-      throw new Error(`Failed to load stream ${id} (${res.status})`);
+      throw await createApiError(res, `Failed to load stream ${id}`);
     }
     return parseStreamView(await readJson(res, `stream ${id}`));
   });

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, afterEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 // useStreamPage drives its state machine through real React hooks, which
 // cannot run outside a component tree. Rather than add a DOM renderer or a
@@ -119,7 +119,11 @@ vi.mock("@/lib/api", async (importOriginal) => {
 
 import { listStreams } from "@/lib/api";
 
-import { useStreamPage, PAGE_SIZE } from "./use-stream-page";
+import {
+  useStreamPage,
+  PAGE_SIZE,
+  CONSECUTIVE_REFRESH_FAILURES_THRESHOLD,
+} from "./use-stream-page";
 
 const ADDRESS = "GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN7";
 
@@ -179,6 +183,21 @@ describe("useStreamPage — load error", () => {
 
     expect(page.lastUpdated).toBeNull();
   });
+
+  it("surfaces requestId when the API error carries a requestId", async () => {
+    const errorWithRequestId = Object.assign(new Error("Database query failed"), {
+      requestId: "req-fail-456",
+      code: "DB_ERROR",
+    });
+    vi.mocked(listStreams).mockRejectedValue(errorWithRequestId);
+
+    harness.render(() => useStreamPage("sender", ADDRESS));
+    await flush();
+    const page = harness.render(() => useStreamPage("sender", ADDRESS));
+
+    expect(page.error).toBe("Database query failed");
+    expect(page.requestId).toBe("req-fail-456");
+  });
 });
 
 describe("useStreamPage — lastUpdated", () => {
@@ -225,5 +244,90 @@ describe("useStreamPage — lastUpdated", () => {
     const afterRefresh = harness.render(() => useStreamPage("sender", ADDRESS));
 
     expect(afterRefresh.lastUpdated).toBe(LATER);
+  });
+});
+
+describe("useStreamPage — background refresh failure threshold and reset", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("warns after reaching consecutive background refresh failure threshold and clears on successful refresh", async () => {
+    // Initial page load succeeds
+    vi.mocked(listStreams).mockResolvedValue({ streams: [], total: 0, limit: PAGE_SIZE, offset: 0 });
+
+    harness.render(() => useStreamPage("sender", ADDRESS));
+    await flush();
+    let page = harness.render(() => useStreamPage("sender", ADDRESS));
+
+    expect(page.consecutiveRefreshFailures).toBe(0);
+    expect(page.refreshWarning).toBeNull();
+
+    // Now mock subsequent background refreshes to fail
+    vi.mocked(listStreams).mockRejectedValue(new Error("503 Service Unavailable"));
+
+    // 1st background refresh failure (after 15s)
+    await vi.advanceTimersByTimeAsync(15_000);
+    await flush();
+    page = harness.render(() => useStreamPage("sender", ADDRESS));
+    expect(page.consecutiveRefreshFailures).toBe(1);
+    expect(page.refreshWarning).toBeNull();
+
+    // 2nd background refresh failure (after another 15s)
+    await vi.advanceTimersByTimeAsync(15_000);
+    await flush();
+    page = harness.render(() => useStreamPage("sender", ADDRESS));
+    expect(page.consecutiveRefreshFailures).toBe(2);
+    expect(page.refreshWarning).toBeNull();
+
+    // 3rd background refresh failure (after another 15s) -> hits threshold
+    await vi.advanceTimersByTimeAsync(15_000);
+    await flush();
+    page = harness.render(() => useStreamPage("sender", ADDRESS));
+    expect(page.consecutiveRefreshFailures).toBe(CONSECUTIVE_REFRESH_FAILURES_THRESHOLD);
+    expect(page.refreshWarning).toBe("Data may be out of date.");
+
+    // Next: manual refresh succeeds -> resets failures and clears warning
+    vi.mocked(listStreams).mockResolvedValue({ streams: [], total: 0, limit: PAGE_SIZE, offset: 0 });
+    page.refresh();
+    await flush();
+    page = harness.render(() => useStreamPage("sender", ADDRESS));
+
+    expect(page.consecutiveRefreshFailures).toBe(0);
+    expect(page.refreshWarning).toBeNull();
+  });
+
+  it("resets consecutive failures and warning when a subsequent background refresh succeeds", async () => {
+    // Initial page load succeeds
+    vi.mocked(listStreams).mockResolvedValue({ streams: [], total: 0, limit: PAGE_SIZE, offset: 0 });
+
+    harness.render(() => useStreamPage("sender", ADDRESS));
+    await flush();
+    let page = harness.render(() => useStreamPage("sender", ADDRESS));
+
+    // Mock failures
+    vi.mocked(listStreams).mockRejectedValue(new Error("Network error"));
+
+    // Fail 3 times to trigger warning
+    for (let i = 0; i < 3; i++) {
+      await vi.advanceTimersByTimeAsync(15_000);
+      await flush();
+    }
+    page = harness.render(() => useStreamPage("sender", ADDRESS));
+    expect(page.consecutiveRefreshFailures).toBe(CONSECUTIVE_REFRESH_FAILURES_THRESHOLD);
+    expect(page.refreshWarning).toBe("Data may be out of date.");
+
+    // Background refresh succeeds
+    vi.mocked(listStreams).mockResolvedValue({ streams: [], total: 0, limit: PAGE_SIZE, offset: 0 });
+    await vi.advanceTimersByTimeAsync(15_000);
+    await flush();
+    page = harness.render(() => useStreamPage("sender", ADDRESS));
+
+    expect(page.consecutiveRefreshFailures).toBe(0);
+    expect(page.refreshWarning).toBeNull();
   });
 });

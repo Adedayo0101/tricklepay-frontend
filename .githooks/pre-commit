@@ -1,0 +1,28 @@
+#!/bin/sh
+set -e
+
+# Pre-commit hook: runs type check and lint on staged files.
+# Can be bypassed knowingly with `git commit --no-verify` (or `-n`), or with SKIP_HOOKS=1.
+
+if [ -n "$SKIP_HOOKS" ]; then
+  exit 0
+fi
+
+# Find staged files (excluding deleted files) with js, jsx, ts, tsx, mjs extensions
+STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACMR | grep -E '\.(ts|tsx|js|mjs)$' || true)
+
+if [ -z "$STAGED_FILES" ]; then
+  exit 0
+fi
+
+echo "Running pre-commit checks..."
+
+# 1. Run lint on staged files
+echo "→ Running lint on staged files..."
+npx eslint $STAGED_FILES
+
+# 2. Run TypeScript type check
+echo "→ Running type check..."
+npm run typecheck
+
+echo "✓ Pre-commit checks passed."

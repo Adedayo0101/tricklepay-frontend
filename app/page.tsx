@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { type JSX, Suspense, useCallback, useEffect, useState } from "react";
 
 import { BrowserSupportNote } from "@/components/browser-support-note";
+import { CopyButton } from "@/components/copy-button";
 import { LoadingState } from "@/components/loading-state";
 import { StreamList } from "@/components/stream-list";
 import { StreamStatusLegend } from "@/components/stream-status-legend";
@@ -155,12 +156,37 @@ function StreamSection({
       )}
 
       {page.error && (
-        <div className="mb-3 flex items-center gap-3">
-          <p className="text-sm text-red-400">{page.error}</p>
+        <div className="mb-3 flex flex-wrap items-center gap-3">
+          <p className="text-sm text-red-400">
+            {page.error}
+            {page.requestId && (
+              <span className="ml-2 inline-flex items-center gap-1 font-mono text-xs text-neutral-400">
+                <span>(Request ID: {page.requestId})</span>
+                <CopyButton value={page.requestId} label="request id" />
+              </span>
+            )}
+          </p>
           <button
             onClick={page.refresh}
             disabled={page.loading}
             className="inline-flex items-center justify-center min-h-[44px] min-w-[44px] rounded border border-neutral-700 px-3 py-2 text-xs text-neutral-400 hover:border-neutral-500 hover:text-neutral-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-400 focus-visible:ring-offset-1 disabled:opacity-40"
+          >
+            Retry
+          </button>
+        </div>
+      )}
+
+      {page.refreshWarning && !page.error && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="mb-3 flex items-center justify-between gap-3 rounded border border-neutral-800 bg-neutral-900/60 px-3 py-2 text-xs text-neutral-400"
+        >
+          <span>{page.refreshWarning}</span>
+          <button
+            onClick={page.refresh}
+            disabled={page.loading}
+            className="inline-flex items-center justify-center min-h-[44px] px-3 py-1.5 text-xs font-medium text-neutral-300 hover:text-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-400 focus-visible:ring-offset-1 disabled:opacity-40"
           >
             Retry
           </button>
