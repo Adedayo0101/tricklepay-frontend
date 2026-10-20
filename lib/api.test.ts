@@ -1,6 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 
-import { listStreams, getStream, ApiResponseError } from "./api";
+import { listStreams, getStream, getStreamEvents, ApiResponseError } from "./api";
 import { config } from "./config";
 
 describe("api client", () => {
@@ -35,6 +35,27 @@ describe("api client", () => {
       expect(requestedUrl).toContain("limit=25");
       expect(requestedUrl).toContain("offset=0");
       expect(requestedUrl).toContain("includeTotal=true");
+    });
+
+    it("forwards cursor query parameter when provided", async () => {
+      let requestedUrl = "";
+      global.fetch = vi.fn().mockImplementation((url: URL | string) => {
+        requestedUrl = url.toString();
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ streams: [], total: 0 }),
+        });
+      });
+
+      await listStreams({
+        sender: "GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        limit: 25,
+        cursor: "cursor_abc123",
+        includeTotal: true,
+      });
+
+      expect(requestedUrl).toContain("cursor=cursor_abc123");
+      expect(requestedUrl).not.toContain("offset=");
     });
 
     it("omits status param when status is 'all' or undefined", async () => {
@@ -152,6 +173,76 @@ describe("api client", () => {
       const res = await getStream("999");
       expect(requestedUrl).toBe(`${config.apiUrl}/streams/999`);
       expect(res).toBeNull();
+    });
+  });
+
+  describe("getStreamEvents", () => {
+    it("fetches and validates stream events in order", async () => {
+      const mockEvents = [
+        {
+          eventId: "0000000100000000-0001",
+          kind: "created",
+          streamId: "1",
+          ledger: 1000,
+          txHash: "tx-created",
+          totalAmount: "10000000",
+          closedAt: "1700000000",
+        },
+        {
+          eventId: "0000000100000500-0001",
+          kind: "withdrawn",
+          streamId: "1",
+          ledger: 1500,
+          txHash: "tx-withdrawn",
+          amount: "5000000",
+          closedAt: "1700001800",
+        },
+      ];
+
+      let requestedUrl = "";
+      global.fetch = vi.fn().mockImplementation((url: URL | string) => {
+        requestedUrl = url.toString();
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => mockEvents,
+        });
+      });
+
+      const res = await getStreamEvents("1");
+      expect(requestedUrl).toBe(`${config.apiUrl}/streams/1/events`);
+      expect(res).toEqual(mockEvents);
+    });
+
+    it("returns an empty array on 404", async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 404,
+      });
+
+      const res = await getStreamEvents("999");
+      expect(res).toEqual([]);
+    });
+
+    it("throws on non-OK status", async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 500,
+      });
+
+      await expect(getStreamEvents("1")).rejects.toThrow(
+        "Failed to load events for stream 1 (500)",
+      );
+    });
+
+    it("rejects malformed event payloads", async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => [{ eventId: "1", kind: "invalid" }],
+      });
+
+      await expect(getStreamEvents("1")).rejects.toThrow(ApiResponseError);
     });
   });
 

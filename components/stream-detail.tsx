@@ -7,6 +7,7 @@ import { CopyButton, ShareLinkButton } from "@/components/copy-button";
 import { DuplicateStreamButton } from "@/components/duplicate-stream-button";
 import { ProgressBar } from "@/components/progress-bar";
 import { StreamActions } from "@/components/stream-actions";
+import { StreamEventHistory } from "@/components/stream-event-history";
 import { StreamStatusBadge } from "@/components/stream-status-badge";
 import { TokenDisplay } from "@/components/token-display";
 import { VestingCurve } from "@/components/vesting-curve";
@@ -19,7 +20,7 @@ import { formatSchedule, NO_CLIFF_LABEL } from "@/lib/schedule";
 import { setSessionItem } from "@/lib/scroll";
 import { resolvedTimeZoneLabel } from "@/lib/timezone";
 import { cliffPositionBps } from "@/lib/vesting";
-import type { StreamView } from "@/types/stream";
+import type { StreamEvent, StreamView } from "@/types/stream";
 
 // Announce balance to assistive technology at most once per this interval.
 // Frequent ticks would flood screen reader queues; 10 s is responsive enough.
@@ -60,7 +61,23 @@ function Field({
   );
 }
 
-export function StreamDetail({ stream, onComplete }: { stream: StreamView; onComplete: () => void }): JSX.Element {
+export interface StreamDetailProps {
+  stream: StreamView;
+  onComplete: () => void;
+  events?: StreamEvent[];
+  eventsLoading?: boolean;
+  eventsError?: string | null;
+  onRetryEvents?: () => void;
+}
+
+export function StreamDetail({
+  stream,
+  onComplete,
+  events = [],
+  eventsLoading = false,
+  eventsError = null,
+  onRetryEvents,
+}: StreamDetailProps): JSX.Element {
   const router = useRouter();
   const accrual = useAccrual(stream);
   const wallet = useWallet();
@@ -214,6 +231,14 @@ export function StreamDetail({ stream, onComplete }: { stream: StreamView; onCom
       </p>
 
       <VestingProjection stream={stream} />
+
+      <StreamEventHistory
+        events={events}
+        token={stream.token}
+        loading={eventsLoading}
+        error={eventsError}
+        onRetry={onRetryEvents}
+      />
 
       <StreamActions stream={stream} walletAddress={wallet.address} onComplete={onComplete} />
     </main>

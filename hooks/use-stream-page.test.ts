@@ -44,7 +44,10 @@ const harness = vi.hoisted(() => {
         cell = {
           value: initial,
           set(next) {
-            cell.value = next;
+            cell.value =
+              typeof next === "function"
+                ? (next as (prev: unknown) => unknown)(cell.value)
+                : next;
           },
         };
         stateCells[stateCursor] = cell;
@@ -146,7 +149,7 @@ describe("useStreamPage — load error", () => {
 
     expect(listStreams).toHaveBeenCalledTimes(1);
     expect(listStreams).toHaveBeenCalledWith(
-      { sender: ADDRESS, limit: PAGE_SIZE, offset: 0, status: "all", includeTotal: true },
+      { sender: ADDRESS, limit: PAGE_SIZE, status: "all", includeTotal: true },
       expect.objectContaining({ signal: expect.any(AbortSignal) }),
     );
     expect(page.error).toBe("Network unreachable");
@@ -329,5 +332,130 @@ describe("useStreamPage — background refresh failure threshold and reset", () 
 
     expect(page.consecutiveRefreshFailures).toBe(0);
     expect(page.refreshWarning).toBeNull();
+  });
+});
+
+function fakeStream(id: string): import("@/types/stream").StreamView {
+  return {
+    id,
+    sender: ADDRESS,
+    recipient: "GBBZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN7",
+    token: "CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC",
+    totalAmount: "10000000",
+    withdrawn: "0",
+    vested: "0",
+    withdrawable: "0",
+    locked: "10000000",
+    startTime: "1000",
+    endTime: "2000",
+    cliffTime: "1000",
+    cancelled: false,
+    status: "streaming",
+    progress: 0,
+  };
+}
+
+describe("useStreamPage — cursor pagination", () => {
+  it("sends no cursor on the first page or refresh, and sends the last nextCursor on loadMore", async () => {
+    vi.mocked(listStreams)
+      .mockResolvedValueOnce({
+        streams: [fakeStream("2")],
+        total: 2,
+        nextCursor: "cursor_after_2",
+      })
+      .mockResolvedValueOnce({
+        streams: [fakeStream("1")],
+        total: 2,
+      })
+      .mockResolvedValueOnce({
+        streams: [fakeStream("2")],
+        total: 2,
+        nextCursor: "cursor_after_2",
+      });
+
+    harness.render(() => useStreamPage("sender", ADDRESS, "all", 1));
+    await flush();
+    let page = harness.render(() => useStreamPage("sender", ADDRESS, "all", 1));
+
+    expect(listStreams).toHaveBeenNthCalledWith(
+      1,
+      { sender: ADDRESS, limit: 1, status: "all", includeTotal: true },
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    );
+    expect(page.streams.map((s) => s.id)).toEqual(["2"]);
+    expect(page.hasMore).toBe(true);
+
+    page.loadMore();
+    await flush();
+    page = harness.render(() => useStreamPage("sender", ADDRESS, "all", 1));
+
+    expect(listStreams).toHaveBeenNthCalledWith(
+      2,
+      {
+        sender: ADDRESS,
+        limit: 1,
+        cursor: "cursor_after_2",
+        status: "all",
+        includeTotal: true,
+      },
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    );
+    expect(page.streams.map((s) => s.id)).toEqual(["2", "1"]);
+    expect(page.hasMore).toBe(false);
+
+    page.refresh();
+    await flush();
+    page = harness.render(() => useStreamPage("sender", ADDRESS, "all", 1));
+
+    expect(listStreams).toHaveBeenNthCalledWith(
+      3,
+      { sender: ADDRESS, limit: 1, status: "all", includeTotal: true },
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    );
+    expect(page.streams.map((s) => s.id)).toEqual(["2"]);
+    expect(page.hasMore).toBe(true);
+  });
+
+  it("paginates stably with nextCursor when a new stream is created between two pages", async () => {
+    // Page 1 returns streams #3 and #2 with nextCursor pointing after #2.
+    // Before loadMore is clicked, stream #4 is created on-chain (increasing total from 3 to 4).
+    // Because loadMore passes cursor="cursor_after_2" instead of an offset, the backend
+    // returns stream #1 directly without shifting #2 into page 2.
+    vi.mocked(listStreams)
+      .mockResolvedValueOnce({
+        streams: [fakeStream("3"), fakeStream("2")],
+        total: 3,
+        nextCursor: "cursor_after_2",
+      })
+      .mockResolvedValueOnce({
+        streams: [fakeStream("1")],
+        total: 4,
+      });
+
+    harness.render(() => useStreamPage("sender", ADDRESS, "all", 2));
+    await flush();
+    let page = harness.render(() => useStreamPage("sender", ADDRESS, "all", 2));
+
+    expect(page.streams.map((s) => s.id)).toEqual(["3", "2"]);
+    expect(page.total).toBe(3);
+    expect(page.hasMore).toBe(true);
+
+    page.loadMore();
+    await flush();
+    page = harness.render(() => useStreamPage("sender", ADDRESS, "all", 2));
+
+    expect(listStreams).toHaveBeenLastCalledWith(
+      {
+        sender: ADDRESS,
+        limit: 2,
+        cursor: "cursor_after_2",
+        status: "all",
+        includeTotal: true,
+      },
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    );
+    expect(page.streams.map((s) => s.id)).toEqual(["3", "2", "1"]);
+    expect(page.total).toBe(4);
+    expect(page.hasMore).toBe(false);
   });
 });

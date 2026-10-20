@@ -35,12 +35,18 @@
 // advanced balance as authoritative.
 import {
   ApiResponseError,
+  parseStreamEvents,
   parseStreamListResponse,
   parseStreamView,
 } from "@/lib/api-schema";
 import { config } from "@/lib/config";
-import { mockGetStream, mockListStreams } from "@/lib/mock-api";
-import type { StreamListResponse, StreamStatus, StreamView } from "@/types/stream";
+import { mockGetStream, mockGetStreamEvents, mockListStreams } from "@/lib/mock-api";
+import type {
+  StreamEvent,
+  StreamListResponse,
+  StreamStatus,
+  StreamView,
+} from "@/types/stream";
 
 export { ApiResponseError } from "@/lib/api-schema";
 
@@ -49,6 +55,7 @@ export interface ListStreamsParams {
   recipient?: string;
   limit?: number;
   offset?: number;
+  cursor?: string;
   status?: StreamStatus | "all";
   includeTotal?: boolean;
 }
@@ -62,6 +69,7 @@ export interface StreamApiClient {
     options?: RequestOptions,
   ): Promise<StreamListResponse>;
   getStream(id: string, options?: RequestOptions): Promise<StreamView | null>;
+  getStreamEvents(id: string, options?: RequestOptions): Promise<StreamEvent[]>;
 }
 /** Per-request options shared by every call in this module. */
 export interface RequestOptions {
@@ -285,6 +293,7 @@ export async function listStreams(
   if (params.status && params.status !== "all") url.searchParams.set("status", params.status);
   if (params.limit !== undefined) url.searchParams.set("limit", String(params.limit));
   if (params.offset !== undefined) url.searchParams.set("offset", String(params.offset));
+  if (params.cursor !== undefined) url.searchParams.set("cursor", params.cursor);
   if (params.includeTotal !== undefined) {
     url.searchParams.set("includeTotal", String(params.includeTotal));
   }
@@ -317,6 +326,25 @@ export async function getStream(
       throw await createApiError(res, `Failed to load stream ${id}`);
     }
     return parseStreamView(await readJson(res, `stream ${id}`));
+  });
+}
+
+// Fetches the indexed event history for a single stream in ascending chain
+// order (GET /streams/:id/events).
+export async function getStreamEvents(
+  id: string,
+  options: RequestOptions = {},
+): Promise<StreamEvent[]> {
+  if (config.mockApi) return mockGetStreamEvents(id);
+
+  const url = new URL(`/streams/${id}/events`, config.apiUrl);
+
+  return request(url, `events for stream ${id}`, options, async (res) => {
+    if (res.status === 404) return [];
+    if (!res.ok) {
+      throw await createApiError(res, `Failed to load events for stream ${id}`);
+    }
+    return parseStreamEvents(await readJson(res, `events for stream ${id}`));
   });
 }
 
@@ -367,4 +395,4 @@ export async function getIndexerLag(options: RequestOptions = {}): Promise<numbe
 
 // Real backend client, typed against the shared contract so a signature drift
 // against the mock in `lib/mock-api.ts` fails the typecheck.
-export const apiClient: StreamApiClient = { listStreams, getStream };
+export const apiClient: StreamApiClient = { listStreams, getStream, getStreamEvents };

@@ -11,12 +11,24 @@
 // Validation asserts, it does not normalise: the payload is returned exactly
 // as it arrived so nothing downstream has to care that it passed through here.
 
-import type { StreamListResponse, StreamStatus, StreamView } from "@/types/stream";
+import type {
+  StreamEvent,
+  StreamEventKind,
+  StreamListResponse,
+  StreamStatus,
+  StreamView,
+} from "@/types/stream";
 
 const STREAM_STATUSES: readonly StreamStatus[] = [
   "pending",
   "streaming",
   "completed",
+  "cancelled",
+];
+
+const STREAM_EVENT_KINDS: readonly StreamEventKind[] = [
+  "created",
+  "withdrawn",
   "cancelled",
 ];
 
@@ -152,4 +164,61 @@ export function parseStreamListResponse(value: unknown): StreamListResponse {
   if (value.offset !== undefined) requireCount(value, "offset");
 
   return value as unknown as StreamListResponse;
+}
+
+/**
+ * Validates one stream event object against the `StreamEvent` contract.
+ */
+export function parseStreamEvent(value: unknown, path = "response"): StreamEvent {
+  if (!isRecord(value)) fail(path, "must be an object", value);
+
+  requireString(value, "eventId", path);
+
+  const kind = value.kind;
+  if (typeof kind !== "string" || !STREAM_EVENT_KINDS.includes(kind as StreamEventKind)) {
+    fail(`${path}.kind`, `must be one of ${STREAM_EVENT_KINDS.join(", ")}`, kind);
+  }
+
+  requireString(value, "streamId", path);
+
+  const ledger = value.ledger;
+  if (typeof ledger !== "number" || !Number.isInteger(ledger) || ledger < 0) {
+    fail(`${path}.ledger`, "must be a non-negative integer", ledger);
+  }
+
+  requireString(value, "txHash", path);
+
+  for (const key of ["sender", "recipient", "token"]) {
+    const field = value[key];
+    if (field !== undefined && field !== null && typeof field !== "string") {
+      fail(`${path}.${key}`, "must be a string or null", field);
+    }
+  }
+
+  for (const key of [
+    "totalAmount",
+    "amount",
+    "recipientAmount",
+    "senderRefund",
+    "startTime",
+    "endTime",
+    "cliffTime",
+    "closedAt",
+  ]) {
+    const field = value[key];
+    if (field !== undefined && field !== null) {
+      requireIntegerString(value, key, path);
+    }
+  }
+
+  return value as unknown as StreamEvent;
+}
+
+/**
+ * Validates a `GET /streams/:id/events` response array and every event inside it.
+ */
+export function parseStreamEvents(value: unknown): StreamEvent[] {
+  if (!Array.isArray(value)) fail("response", "must be an array", value);
+  value.forEach((event, index) => parseStreamEvent(event, `response[${index}]`));
+  return value as unknown as StreamEvent[];
 }

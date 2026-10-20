@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { parseStreamListResponse, parseStreamView } from "./api-schema";
-import { mockGetStream, mockListStreams } from "./mock-api";
+import { parseStreamEvents, parseStreamListResponse, parseStreamView } from "./api-schema";
+import { mockGetStream, mockGetStreamEvents, mockListStreams } from "./mock-api";
 
 describe("mock API", () => {
   it("returns responses matching the API response types", async () => {
@@ -30,5 +30,17 @@ describe("mock API", () => {
 
   it("returns null for an unknown stream id", async () => {
     expect(await mockGetStream("does-not-exist")).toBeNull();
+  });
+
+  it("returns validated event histories for known streams and an empty list for unknown ids", async () => {
+    const stream1Events = await mockGetStreamEvents("1");
+    expect(() => parseStreamEvents(stream1Events)).not.toThrow();
+    expect(stream1Events.map((e) => e.kind)).toEqual(["created", "withdrawn"]);
+
+    const cancelledEvents = await mockGetStreamEvents("4");
+    expect(() => parseStreamEvents(cancelledEvents)).not.toThrow();
+    expect(cancelledEvents.map((e) => e.kind)).toEqual(["created", "withdrawn", "cancelled"]);
+
+    expect(await mockGetStreamEvents("does-not-exist")).toEqual([]);
   });
 });

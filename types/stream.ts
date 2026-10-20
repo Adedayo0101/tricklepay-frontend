@@ -71,3 +71,40 @@ export interface StreamListResponse {
   limit?: number;
   offset?: number;
 }
+
+export type StreamEventKind = "created" | "withdrawn" | "cancelled";
+
+export interface StreamEvent {
+  /** RPC event id in TOID-index form, used as the ordering key */
+  eventId: string;
+  /** Event kind emitted by the stream contract */
+  kind: StreamEventKind;
+  /** Stream id associated with the event (uint64, decimal string) */
+  streamId: string;
+  /** Ledger sequence containing the event */
+  ledger: number;
+  /** Transaction hash that emitted the event */
+  txHash: string;
+  /** Sender address for created/cancelled events, if present */
+  sender?: string | null;
+  /** Recipient address for created/withdrawn/cancelled events, if present */
+  recipient?: string | null;
+  /** Token contract address for created events, if present */
+  token?: string | null;
+  /** Total amount for created events, in base units as a decimal string */
+  totalAmount?: string | null;
+  /** Withdrawn amount for withdrawal events, in base units as a decimal string */
+  amount?: string | null;
+  /** Recipient payout for cancellation events, in base units as a decimal string */
+  recipientAmount?: string | null;
+  /** Sender refund for cancellation events, in base units as a decimal string */
+  senderRefund?: string | null;
+  /** Stream start time in Unix seconds for created events, as a decimal string */
+  startTime?: string | null;
+  /** Stream end time in Unix seconds for created events, as a decimal string */
+  endTime?: string | null;
+  /** Vesting cliff time in Unix seconds for created events, as a decimal string */
+  cliffTime?: string | null;
+  /** Ledger close time in Unix seconds for the event, as a decimal string */
+  closedAt?: string | null;
+}

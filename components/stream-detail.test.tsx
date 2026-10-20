@@ -9,9 +9,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { StreamDetail } from "@/components/stream-detail";
 import { useWallet } from "@/components/wallet-provider";
 import { useAccrual } from "@/hooks/use-accrual";
-import { formatTokenAmount } from "@/lib/format";
+import { config } from "@/lib/config";
+import { txExplorerUrl } from "@/lib/explorer";
+import { formatTime, formatTokenAmount } from "@/lib/format";
 import { formatSchedule, NO_CLIFF_LABEL } from "@/lib/schedule";
-import type { StreamView } from "@/types/stream";
+import type { StreamEvent, StreamView } from "@/types/stream";
 import type { WalletState } from "@/types/wallet";
 
 vi.mock("next/navigation", () => ({
@@ -140,5 +142,64 @@ describe("StreamDetail", () => {
 
     // No action controls render for unrelated wallet
     expect(container.querySelector('[data-testid="stream-actions"]')).toBeNull();
+  });
+
+  it("renders event history loading, empty, error, and populated states", async () => {
+    await act(async () => {
+      root.render(<StreamDetail stream={STREAM} onComplete={vi.fn()} eventsLoading />);
+    });
+    expect(container.textContent).toContain("Loading event history…");
+
+    await act(async () => {
+      root.render(<StreamDetail stream={STREAM} onComplete={vi.fn()} events={[]} />);
+    });
+    expect(container.textContent).toContain("No events recorded for this stream yet.");
+
+    await act(async () => {
+      root.render(
+        <StreamDetail
+          stream={STREAM}
+          onComplete={vi.fn()}
+          eventsError="Could not load event history"
+        />,
+      );
+    });
+    expect(container.textContent).toContain("Could not load event history");
+
+    const events: StreamEvent[] = [
+      {
+        eventId: "0001-0001",
+        kind: "created",
+        streamId: STREAM.id,
+        ledger: 100,
+        txHash: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        totalAmount: STREAM.totalAmount,
+        closedAt: STREAM.startTime,
+      },
+      {
+        eventId: "0002-0001",
+        kind: "withdrawn",
+        streamId: STREAM.id,
+        ledger: 150,
+        txHash: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        amount: "2500000",
+        closedAt: "1700001800",
+      },
+    ];
+
+    await act(async () => {
+      root.render(<StreamDetail stream={STREAM} onComplete={vi.fn()} events={events} />);
+    });
+
+    const text = container.textContent ?? "";
+    expect(text).toContain("Event history");
+    expect(text).toContain("Created");
+    expect(text).toContain("Withdrawn");
+    expect(text).toContain(formatTokenAmount("2500000", STREAM.token));
+    expect(text).toContain(formatTime("1700001800"));
+
+    const links = Array.from(container.querySelectorAll("a")).map((a) => a.getAttribute("href"));
+    expect(links).toContain(txExplorerUrl(events[0].txHash, config.network));
+    expect(links).toContain(txExplorerUrl(events[1].txHash, config.network));
   });
 });

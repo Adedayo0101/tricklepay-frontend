@@ -61,13 +61,19 @@ export interface StreamPage {
 function pageQuery(
   role: StreamRole,
   address: string,
-  offset: number,
   status: StreamStatus | "all" | undefined,
   pageSize: number,
+  cursor?: string,
 ): ListStreamsParams {
   const party: ListStreamsParams =
     role === "sender" ? { sender: address } : { recipient: address };
-  return { ...party, limit: pageSize, offset, status, includeTotal: true };
+  return {
+    ...party,
+    limit: pageSize,
+    ...(cursor !== undefined ? { cursor } : {}),
+    status,
+    includeTotal: true,
+  };
 }
 
 /**
@@ -111,10 +117,7 @@ export function useStreamPage(
 ): StreamPage {
   const [streams, setStreams] = useState<StreamView[]>([]);
   const [total, setTotal] = useState(0);
-  // Rows fetched so far, which is the offset of the next page. Tracked apart
-  // from streams.length because duplicates are dropped on append but still
-  // count against the offset the backend paginates by.
-  const [fetched, setFetched] = useState(0);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -161,7 +164,7 @@ export function useStreamPage(
 
     setStreams([]);
     setTotal(0);
-    setFetched(0);
+    setNextCursor(null);
     setError(null);
     setRequestId(null);
     setConsecutiveRefreshFailures(0);
@@ -174,14 +177,14 @@ export function useStreamPage(
       for (let attempt = 1; attempt <= FIRST_PAGE_MAX_ATTEMPTS; attempt += 1) {
         const controller = startRequest();
         try {
-          const page = await listStreams(pageQuery(role, address, 0, status, pageSize), {
+          const page = await listStreams(pageQuery(role, address, status, pageSize), {
             signal: controller.signal,
           });
           endRequest(controller);
           if (generation.current !== gen) return;
           setStreams(page.streams);
           setTotal(page.total ?? page.streams.length);
-          setFetched(page.streams.length);
+          setNextCursor(page.nextCursor ?? null);
           setLastUpdated(Date.now());
           setConsecutiveRefreshFailures(0);
           setRefreshWarning(null);
@@ -220,7 +223,7 @@ export function useStreamPage(
     return () => abortInFlight();
   }, [loadFirstPage, abortInFlight]);
 
-  const hasMore = fetched < total;
+  const hasMore = nextCursor !== null;
 
   const refresh = loadFirstPage;
 
@@ -228,12 +231,12 @@ export function useStreamPage(
     if (!address || (typeof document !== "undefined" && document.visibilityState === "hidden")) return;
     const gen = generation.current;
     const controller = startRequest();
-    listStreams(pageQuery(role, address, 0, status, pageSize), { signal: controller.signal })
+    listStreams(pageQuery(role, address, status, pageSize), { signal: controller.signal })
       .then((page) => {
         if (generation.current !== gen) return;
         setStreams(page.streams);
         setTotal(page.total ?? page.streams.length);
-        setFetched(page.streams.length);
+        setNextCursor(page.nextCursor ?? null);
         setLastUpdated(Date.now());
         setConsecutiveRefreshFailures(0);
         setRefreshWarning(null);
@@ -279,26 +282,27 @@ export function useStreamPage(
   }, [address, silentRefresh]);
 
   const loadMore = useCallback(() => {
-    if (!address || loading || loadingMore || !hasMore) return;
+    if (!address || loading || loadingMore || !nextCursor) return;
     const gen = generation.current;
     const controller = startRequest();
     setLoadingMore(true);
     setError(null);
 
-    listStreams(pageQuery(role, address, fetched, status, pageSize), { signal: controller.signal })
+    listStreams(pageQuery(role, address, status, pageSize, nextCursor), {
+      signal: controller.signal,
+    })
       .then((page) => {
         if (generation.current !== gen) return;
-        // A stream created since the first page shifts every later row by one,
-        // so the same id can arrive twice. Drop the repeats to keep React keys
-        // unique, but count every returned row against the offset.
         setStreams((previous) => {
-          const seen = new Set(previous.map((stream) => stream.id));
-          return [...previous, ...page.streams.filter((stream) => !seen.has(stream.id))];
+          const combined = [...previous, ...page.streams];
+          setTotal(
+            page.streams.length === 0
+              ? combined.length
+              : (page.total ?? combined.length),
+          );
+          return combined;
         });
-        setFetched(fetched + page.streams.length);
-        // An empty page means the result set shrank between requests; trust the
-        // rows in hand over the reported total so the button does not stick.
-        setTotal(page.streams.length === 0 ? fetched : (page.total ?? fetched));
+        setNextCursor(page.nextCursor ?? null);
         setLastUpdated(Date.now());
         setConsecutiveRefreshFailures(0);
         setRefreshWarning(null);
@@ -322,8 +326,7 @@ export function useStreamPage(
   }, [
     address,
     role,
-    fetched,
-    hasMore,
+    nextCursor,
     loading,
     loadingMore,
     status,
