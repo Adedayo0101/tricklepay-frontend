@@ -38,6 +38,18 @@ describe("RootLayout", () => {
     expect(htmlString).toContain("Skip"); // from skip-link mock
   });
 
+  it("includes theme-color meta tags for dark and light colour schemes", () => {
+    const el = RootLayout({ children: <div /> });
+    const htmlString = renderToStaticMarkup(el);
+
+    // Dark: neutral-950 default background (#0a0a0a)
+    expect(htmlString).toContain("(prefers-color-scheme: dark)");
+    expect(htmlString).toContain("#0a0a0a");
+    // Light: neutral-950 maps to #fafafa in the light theme (see globals.css)
+    expect(htmlString).toContain("(prefers-color-scheme: light)");
+    expect(htmlString).toContain("#fafafa");
+  });
+
   it("wraps the tree in providers", () => {
     const el = RootLayout({ children: <Probe /> });
     const htmlString = renderToStaticMarkup(el);
@@ -47,6 +59,15 @@ describe("RootLayout", () => {
     expect(htmlString).toContain("Probe Active");
     expect(htmlString).toContain('data-theme="dark"'); // ThemeProvider default
     expect(htmlString).toContain('data-wallet-ready="true"');
+  });
+
+  it("includes a noscript fallback explaining JS and wallet requirement", () => {
+    const el = RootLayout({ children: <div /> });
+    const htmlString = renderToStaticMarkup(el);
+
+    expect(htmlString).toContain("<noscript>");
+    expect(htmlString).toContain("JavaScript is required");
+    expect(htmlString).toContain("freighter.app");
   });
 });
 
