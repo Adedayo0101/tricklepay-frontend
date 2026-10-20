@@ -34,6 +34,7 @@ describe("CreateStreamFields", () => {
     onApplyPreset: vi.fn(),
     rememberedToken: null,
     onClearRememberedToken: vi.fn(),
+    walletAddress: null,
     previewRate: null,
     previewDuration: null,
     feedback: null,
@@ -192,6 +193,94 @@ describe("CreateStreamFields", () => {
       );
 
       expect(screen.queryByText(/vest and become withdrawable immediately/)).toBeNull();
+    });
+  });
+
+  describe("the self-recipient hint", () => {
+    const WALLET = "GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN7";
+
+    it("appears when the recipient matches the connected wallet", () => {
+      render(
+        <CreateStreamFields
+          {...defaultProps}
+          walletAddress={WALLET}
+          values={{ ...defaultProps.values, recipient: WALLET }}
+        />,
+      );
+
+      expect(screen.getByText("You are streaming to yourself.")).toBeTruthy();
+    });
+
+    it("ignores case when comparing the recipient to the connected wallet", () => {
+      render(
+        <CreateStreamFields
+          {...defaultProps}
+          walletAddress={WALLET}
+          values={{ ...defaultProps.values, recipient: WALLET.toLowerCase() }}
+        />,
+      );
+
+      expect(screen.getByText("You are streaming to yourself.")).toBeTruthy();
+    });
+
+    it("does not appear for a different recipient", () => {
+      render(
+        <CreateStreamFields
+          {...defaultProps}
+          walletAddress={WALLET}
+          values={{
+            ...defaultProps.values,
+            recipient: "GBBZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN7",
+          }}
+        />,
+      );
+
+      expect(screen.queryByText("You are streaming to yourself.")).toBeNull();
+    });
+
+    it("does not appear when no wallet is connected", () => {
+      render(
+        <CreateStreamFields
+          {...defaultProps}
+          walletAddress={null}
+          values={{ ...defaultProps.values, recipient: WALLET }}
+        />,
+      );
+
+      expect(screen.queryByText("You are streaming to yourself.")).toBeNull();
+    });
+
+    it("does not appear when the recipient field is empty", () => {
+      render(<CreateStreamFields {...defaultProps} walletAddress={WALLET} />);
+
+      expect(screen.queryByText("You are streaming to yourself.")).toBeNull();
+    });
+
+    it("does not block submission — the submit button stays enabled", () => {
+      render(
+        <CreateStreamFields
+          {...defaultProps}
+          walletAddress={WALLET}
+          values={{ ...defaultProps.values, recipient: WALLET }}
+        />,
+      );
+
+      expect(screen.getByRole("button", { name: "Review stream" }).hasAttribute("disabled")).toBe(
+        false,
+      );
+    });
+
+    it("does not appear when the recipient field has a validation error", () => {
+      render(
+        <CreateStreamFields
+          {...defaultProps}
+          walletAddress={WALLET}
+          values={{ ...defaultProps.values, recipient: WALLET }}
+          errors={{ recipient: "Must be a valid G... or C... Stellar address." }}
+        />,
+      );
+
+      expect(screen.queryByText("You are streaming to yourself.")).toBeNull();
     });
   });
 

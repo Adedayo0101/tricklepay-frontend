@@ -66,6 +66,23 @@ export function endFieldError(start: string, end: string): string | undefined {
   return endUnix <= nowUnix ? "End must be in the future." : undefined;
 }
 
+/**
+ * Whether `recipient` names the connected wallet itself, compared
+ * case-insensitively. The contract allows a stream from an address to
+ * itself, so this is not a validation error — just something worth
+ * flagging, since it is almost always a mistake (the wrong field) and only
+ * occasionally intentional.
+ *
+ * Case-insensitive on purpose, unlike lib/stream-role.ts's isSameAddress: a
+ * value still being typed has not been validated as a real strkey yet, and
+ * a person pasting or half-remembering their own address does not reliably
+ * preserve its case.
+ */
+export function isSelfRecipient(recipient: string, walletAddress: string | null): boolean {
+  if (!recipient || !walletAddress) return false;
+  return recipient.trim().toLowerCase() === walletAddress.toLowerCase();
+}
+
 export function cliffFieldError(start: string, end: string, cliff: string): string | undefined {
   if (!start || !end || !cliff) return undefined;
   const c = toUnix(cliff);

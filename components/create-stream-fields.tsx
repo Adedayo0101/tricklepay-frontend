@@ -1,6 +1,7 @@
 import type { JSX, FormEvent, ReactNode } from "react";
 
 import type { CreateFormErrors, CreateFormField, CreateFormRefs } from "@/hooks/use-create-stream-form";
+import { isSelfRecipient } from "@/lib/create-stream-validation";
 import { DURATION_UNITS, isStartInPast, nowAsDatetimeLocal } from "@/lib/duration";
 import { formatTokenRate } from "@/lib/format";
 import { nativeAssetContractId } from "@/lib/native-asset";
@@ -188,6 +189,7 @@ export function CreateStreamFields({
   onApplyPreset,
   rememberedToken,
   onClearRememberedToken,
+  walletAddress,
   feedback,
   submitting,
   submitDisabled,
@@ -201,6 +203,8 @@ export function CreateStreamFields({
   rememberedToken: string | null;
   /** Forgets the remembered token (see lib/last-token.ts). */
   onClearRememberedToken: () => void;
+  /** The connected wallet, or null if none — flags a recipient that matches it. */
+  walletAddress: string | null;
   /** Token decimal scale (defaults to 7). */
   tokenDecimals?: number;
   /** Visible notice when decimals could not be read and defaulted to 7. */
@@ -211,6 +215,7 @@ export function CreateStreamFields({
   onSubmit: (e: FormEvent) => void;
 }): JSX.Element {
   const { values, errors, refs, onFieldChange, tokenDecimals = 7, decimalsNotice } = fields;
+  const selfRecipient = isSelfRecipient(values.recipient, walletAddress);
 
 
   // Clearing the remembered token also empties the field when it is still
@@ -232,8 +237,15 @@ export function CreateStreamFields({
           onChange={(e) => onFieldChange("recipient", e.target.value)}
           placeholder="G... or C..."
           aria-invalid={!!errors.recipient}
-          aria-describedby={errors.recipient ? "recipient-error" : undefined}
+          aria-describedby={
+            errors.recipient ? "recipient-error" : selfRecipient ? "recipient-self-hint" : undefined
+          }
         />
+        {!errors.recipient && selfRecipient && (
+          <span id="recipient-self-hint" className="text-xs text-amber-400">
+            You are streaming to yourself.
+          </span>
+        )}
       </Field>
       <Field label="Token contract id" error={errors.token} errorId="token-error">
         <div className="flex gap-2">
