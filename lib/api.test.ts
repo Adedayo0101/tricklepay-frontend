@@ -37,6 +37,27 @@ describe("api client", () => {
       expect(requestedUrl).toContain("includeTotal=true");
     });
 
+    it("forwards cursor query parameter when provided", async () => {
+      let requestedUrl = "";
+      global.fetch = vi.fn().mockImplementation((url: URL | string) => {
+        requestedUrl = url.toString();
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ streams: [], total: 0 }),
+        });
+      });
+
+      await listStreams({
+        sender: "GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        limit: 25,
+        cursor: "cursor_abc123",
+        includeTotal: true,
+      });
+
+      expect(requestedUrl).toContain("cursor=cursor_abc123");
+      expect(requestedUrl).not.toContain("offset=");
+    });
+
     it("omits status param when status is 'all' or undefined", async () => {
       let requestedUrl = "";
       global.fetch = vi.fn().mockImplementation((url: URL | string) => {

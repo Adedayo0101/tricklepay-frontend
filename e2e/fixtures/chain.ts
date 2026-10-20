@@ -257,6 +257,7 @@ export const ALLOWED_STREAM_QUERY_PARAMS = [
   "status",
   "limit",
   "offset",
+  "cursor",
   "includeTotal",
 ] as const;
 
@@ -339,16 +340,23 @@ export async function stubApi(page: Page, store: StreamStore): Promise<void> {
     });
     const total = streams.length;
     const limit = Number(url.searchParams.get("limit") ?? total);
-    const offset = Number(url.searchParams.get("offset") ?? 0);
+    const cursor = url.searchParams.get("cursor");
+    const cursorIndex = cursor ? streams.findIndex((s) => s.id === cursor) : -1;
+    const offset = cursorIndex >= 0 ? cursorIndex + 1 : Number(url.searchParams.get("offset") ?? 0);
     const includeTotal = url.searchParams.get("includeTotal") === "true";
+    const pageStreams = streams.slice(offset, offset + limit);
+    const hasNext = offset + limit < total && pageStreams.length > 0;
 
     const body: Record<string, unknown> = {
-      streams: streams.slice(offset, offset + limit),
+      streams: pageStreams,
       limit,
-      offset,
+      offset: cursor ? 0 : offset,
     };
     if (includeTotal) {
       body.total = total;
+    }
+    if (hasNext) {
+      body.nextCursor = pageStreams[pageStreams.length - 1].id;
     }
 
     return route.fulfill({

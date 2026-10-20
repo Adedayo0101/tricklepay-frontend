@@ -55,6 +55,7 @@ export interface ListStreamsParams {
   recipient?: string;
   limit?: number;
   offset?: number;
+  cursor?: string;
   status?: StreamStatus | "all";
   includeTotal?: boolean;
 }
@@ -292,6 +293,7 @@ export async function listStreams(
   if (params.status && params.status !== "all") url.searchParams.set("status", params.status);
   if (params.limit !== undefined) url.searchParams.set("limit", String(params.limit));
   if (params.offset !== undefined) url.searchParams.set("offset", String(params.offset));
+  if (params.cursor !== undefined) url.searchParams.set("cursor", params.cursor);
   if (params.includeTotal !== undefined) {
     url.searchParams.set("includeTotal", String(params.includeTotal));
   }

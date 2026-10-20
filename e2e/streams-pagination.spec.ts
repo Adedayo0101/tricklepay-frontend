@@ -18,11 +18,11 @@ test("loads another page of streams from the dashboard", async ({ page }) => {
   await stubApi(page, store);
   await stubChain(page, { address: TEST_ADDRESS });
 
-  const incomingOffsets: number[] = [];
+  const incomingCursors: Array<string | null> = [];
   page.on("request", (request) => {
     const url = new URL(request.url());
     if (url.pathname === "/streams" && url.searchParams.get("recipient") === TEST_ADDRESS) {
-      incomingOffsets.push(Number(url.searchParams.get("offset")));
+      incomingCursors.push(url.searchParams.get("cursor"));
     }
   });
 
@@ -35,7 +35,7 @@ test("loads another page of streams from the dashboard", async ({ page }) => {
 
   await incoming.getByRole("button", { name: "Load more (1 remaining)" }).click();
 
-  await expect.poll(() => incomingOffsets).toEqual([0, 25]);
+  await expect.poll(() => incomingCursors).toEqual([null, "25"]);
   await expect(incoming.getByRole("link")).toHaveCount(26);
   await expect(incoming.getByRole("link", { name: /#26/ })).toBeVisible();
   await expect(incoming.getByRole("button", { name: /Load more/ })).toHaveCount(0);

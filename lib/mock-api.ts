@@ -72,9 +72,20 @@ export const mockListStreams: StreamApiClient["listStreams"] = async (
   const matches = MOCK_STREAMS.filter(
     (s) => !params.status || params.status === "all" || s.status === params.status,
   ).map((s) => asParty(s, params));
-  const offset = params.offset ?? 0;
+  const cursorIndex =
+    params.cursor !== undefined ? matches.findIndex((s) => s.id === params.cursor) : -1;
+  const start = cursorIndex >= 0 ? cursorIndex + 1 : (params.offset ?? 0);
   const limit = params.limit ?? matches.length;
-  return { streams: matches.slice(offset, offset + limit), total: matches.length, limit, offset };
+  const pageStreams = matches.slice(start, start + limit);
+  const hasNext = start + limit < matches.length && pageStreams.length > 0;
+  const nextCursor = hasNext ? pageStreams[pageStreams.length - 1].id : undefined;
+  return {
+    streams: pageStreams,
+    total: matches.length,
+    ...(nextCursor !== undefined ? { nextCursor } : {}),
+    limit,
+    offset: params.cursor !== undefined ? 0 : (params.offset ?? 0),
+  };
 };
 
 /** Mock counterpart of `getStream`: null for an unknown id, like a 404. */
