@@ -1,0 +1,4 @@
+{
+  "error": "Bad Request",
+  "message": "Unknown query parameter: unknownParam"
+}

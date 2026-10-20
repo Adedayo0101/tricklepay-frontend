@@ -1,17 +1,20 @@
+"use client";
+
 import type { JSX } from "react";
 
-import { formatTokenDisplay, resolveTokenMetadata, truncateAddress } from "@/lib/format";
+import { formatTokenDisplay, truncateAddress } from "@/lib/format";
+import { useTokenMetadata } from "@/lib/token-metadata";
 
 /**
  * Token identity shown wherever a stream references a token contract.
- * A recognised contract shows its symbol; any other address shows the
- * truncated address plus an "Unrecognised token" marker so a familiar asset
- * can never be confused with an arbitrary contract. The outer inline-flex
- * wrapper is rendered either way so the row keeps the same layout.
+ * A recognised or resolved contract shows its symbol; any other address shows
+ * the truncated address plus an "Unrecognised token" marker so a familiar asset
+ * can never be confused with an arbitrary contract.
+ * The address is always available on hover via the title attribute.
  */
 export function TokenDisplay({ token }: { token: string }): JSX.Element {
-  const metadata = resolveTokenMetadata(token);
-  const display = formatTokenDisplay(token);
+  const metadata = useTokenMetadata(token);
+  const display = metadata?.symbol ?? formatTokenDisplay(token);
 
   if (metadata) {
     return (

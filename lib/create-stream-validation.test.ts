@@ -76,6 +76,32 @@ describe("validateCreateStreamForm", () => {
       end: "End must be in the future.",
     });
   });
+
+  it("validates amount precision with custom token decimals (6, 7, 18)", () => {
+    // 6 decimals: allows up to 6 decimal places, rejects 7
+    expect(
+      validateCreateStreamForm({ ...validDraft, amount: "1.123456" }, 6).amount,
+    ).toBeUndefined();
+    expect(
+      validateCreateStreamForm({ ...validDraft, amount: "1.1234567" }, 6).amount,
+    ).toBe("Amount cannot have more than 6 decimal places.");
+
+    // 7 decimals: allows up to 7 decimal places, rejects 8
+    expect(
+      validateCreateStreamForm({ ...validDraft, amount: "1.1234567" }, 7).amount,
+    ).toBeUndefined();
+    expect(
+      validateCreateStreamForm({ ...validDraft, amount: "1.12345678" }, 7).amount,
+    ).toBe("Amount cannot have more than 7 decimal places.");
+
+    // 18 decimals: allows up to 18 decimal places, rejects 19
+    expect(
+      validateCreateStreamForm({ ...validDraft, amount: "1.123456789012345678" }, 18).amount,
+    ).toBeUndefined();
+    expect(
+      validateCreateStreamForm({ ...validDraft, amount: "1.1234567890123456789" }, 18).amount,
+    ).toBe("Amount cannot have more than 18 decimal places.");
+  });
 });
 
 describe("endFieldError against the current clock", () => {

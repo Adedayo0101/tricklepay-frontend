@@ -39,10 +39,10 @@ export function tokenFieldError(value: string): string | undefined {
     : undefined;
 }
 
-export function amountFieldError(value: string): string | undefined {
+export function amountFieldError(value: string, decimals: number = 7): string | undefined {
   if (!value) return undefined;
   try {
-    return parseAmount(value) <= 0n ? "Amount must be greater than zero." : undefined;
+    return parseAmount(value, decimals) <= 0n ? "Amount must be greater than zero." : undefined;
   } catch (err) {
     return err instanceof Error ? err.message : "Invalid amount.";
   }
@@ -78,13 +78,16 @@ export function cliffFieldError(start: string, end: string, cliff: string): stri
  * Validates every create-stream field for submission. Keeping this composition
  * here means the form has one source for both its live and submit-time rules.
  */
-export function validateCreateStreamForm(values: FormDraft): CreateStreamFieldErrors {
+export function validateCreateStreamForm(
+  values: FormDraft,
+  decimals: number = 7,
+): CreateStreamFieldErrors {
   const { recipient, token, amount, start, end, cliff } = values;
 
   return {
     recipient: requiredFieldError("recipient", recipient) ?? recipientFieldError(recipient),
     token: requiredFieldError("token", token) ?? tokenFieldError(token),
-    amount: requiredFieldError("amount", amount) ?? amountFieldError(amount),
+    amount: requiredFieldError("amount", amount) ?? amountFieldError(amount, decimals),
     start: requiredFieldError("start", start),
     end: requiredFieldError("end", end) ?? endFieldError(start, end),
     cliff: cliffFieldError(start, end, cliff),

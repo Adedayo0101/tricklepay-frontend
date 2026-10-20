@@ -1,0 +1,17 @@
+{
+  "id": "1",
+  "sender": "GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN7",
+  "recipient": "GBPBZCS2A77P2RJ4J66Q7Q76P7HQUML72ZUR76DF735QKBS7T74S72CS",
+  "token": "CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC",
+  "totalAmount": "1000000000",
+  "withdrawn": "0",
+  "vested": "500000000",
+  "withdrawable": "500000000",
+  "locked": "500000000",
+  "startTime": "1735732800",
+  "endTime": "1738324800",
+  "cliffTime": "1735732800",
+  "cancelled": false,
+  "status": "streaming",
+  "progress": 5000
+}

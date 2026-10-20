@@ -24,6 +24,7 @@ describe("api client", () => {
         status: "streaming",
         limit: 25,
         offset: 0,
+        includeTotal: true,
       });
 
       // Ensure the base URL and path are composed correctly
@@ -33,6 +34,7 @@ describe("api client", () => {
       expect(requestedUrl).toContain("status=streaming");
       expect(requestedUrl).toContain("limit=25");
       expect(requestedUrl).toContain("offset=0");
+      expect(requestedUrl).toContain("includeTotal=true");
     });
 
     it("omits status param when status is 'all' or undefined", async () => {

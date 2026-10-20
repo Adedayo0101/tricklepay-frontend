@@ -5,6 +5,7 @@ import { StreamStatusBadge } from "@/components/stream-status-badge";
 import { formatTokenAmount, truncateAddress } from "@/lib/format";
 import { formatRemaining } from "@/lib/schedule";
 import { markNavigatingToStream } from "@/lib/scroll";
+import { useTokensMetadata } from "@/lib/token-metadata";
 import type { StreamView } from "@/types/stream";
 
 export function StreamTable({
@@ -14,6 +15,7 @@ export function StreamTable({
   streams: StreamView[];
   emptyMessage?: string;
 }): JSX.Element {
+  useTokensMetadata(streams.map((s) => s.token));
   return (
     /* Horizontal scroll on narrow viewports so columns never get crushed */
     <div className="overflow-x-auto rounded-lg border border-neutral-800">
@@ -101,10 +103,16 @@ export function StreamTable({
               <td className="px-4 py-3 font-mono text-xs text-neutral-300 truncate max-w-[100px]">
                 {truncateAddress(stream.recipient)}
               </td>
-              <td className="px-4 py-3 text-right tabular-nums text-neutral-100">
+              <td
+                className="px-4 py-3 text-right tabular-nums text-neutral-100"
+                title={stream.token}
+              >
                 {formatTokenAmount(stream.withdrawable, stream.token)}
               </td>
-              <td className="px-4 py-3 text-right tabular-nums text-neutral-400">
+              <td
+                className="px-4 py-3 text-right tabular-nums text-neutral-400"
+                title={stream.token}
+              >
                 {formatTokenAmount(stream.totalAmount, stream.token)}
               </td>
               <td className="px-4 py-3 text-xs text-neutral-500">

@@ -50,6 +50,7 @@ export interface ListStreamsParams {
   limit?: number;
   offset?: number;
   status?: StreamStatus | "all";
+  includeTotal?: boolean;
 }
 
 /** Shared contract for stream reads. Both the real backend client below and
@@ -221,6 +222,9 @@ export async function listStreams(
   if (params.status && params.status !== "all") url.searchParams.set("status", params.status);
   if (params.limit !== undefined) url.searchParams.set("limit", String(params.limit));
   if (params.offset !== undefined) url.searchParams.set("offset", String(params.offset));
+  if (params.includeTotal !== undefined) {
+    url.searchParams.set("includeTotal", String(params.includeTotal));
+  }
 
   return request(url, "the stream list", options, async (res) => {
     if (!res.ok) {

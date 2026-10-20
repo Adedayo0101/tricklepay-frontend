@@ -55,6 +55,7 @@ export function CreateForm(): JSX.Element {
           params={form.prepared}
           feeEstimate={form.feeEstimate}
           balanceCheck={form.balanceCheck}
+          decimals={form.tokenDecimals}
           submitting={form.submitting}
           onBack={form.backToEdit}
           onConfirm={() => void form.handleConfirm()}
@@ -73,6 +74,8 @@ export function CreateForm(): JSX.Element {
       onApplyPreset={form.applyPreset}
       rememberedToken={form.rememberedToken}
       onClearRememberedToken={form.clearRememberedToken}
+      tokenDecimals={form.tokenDecimals}
+      decimalsNotice={form.decimalsNotice}
       previewRate={form.previewRate}
       previewDuration={form.previewDuration}
       feedback={feedback}
@@ -82,3 +85,4 @@ export function CreateForm(): JSX.Element {
     />
   );
 }
+

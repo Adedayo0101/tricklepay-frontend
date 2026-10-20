@@ -29,7 +29,13 @@ import { formatDuration } from "@/lib/format";
 import { setPendingNotice } from "@/lib/pending-notice";
 import { applySchedulePreset, SCHEDULE_PRESETS } from "@/lib/schedule-presets";
 import { readTokenBalance } from "@/lib/token-balance";
-import { parseAmount, toUnix } from "@/lib/validation";
+import {
+  DEFAULT_TOKEN_DECIMALS,
+  getCachedTokenDecimals,
+  readTokenDecimals,
+} from "@/lib/token-decimals";
+import { getCachedTokenMetadata, readTokenMetadata } from "@/lib/token-metadata";
+import { isValidContractAddress, parseAmount, toUnix } from "@/lib/validation";
 import { vestingRatePerDay } from "@/lib/vesting";
 import type { BalanceCheck, CreateStreamParams, FeeEstimate, TxStage } from "@/types/contract";
 import type { FormDraft } from "@/types/form";
@@ -60,6 +66,10 @@ export interface CreateStreamForm {
   timeoutHash: string | null;
   error: string | null;
   prepared: CreateStreamParams | null;
+  /** Decimal precision of the stream token (defaults to 7). */
+  tokenDecimals: number;
+  /** Visible notice when decimals cannot be read and fall back to 7. */
+  decimalsNotice: string | null;
   /** Best-effort network-fee estimate for the stream under review. */
   feeEstimate: FeeEstimate;
   /** Best-effort read of the sender's balance for the stream under review. */
@@ -76,6 +86,7 @@ export interface CreateStreamForm {
   handleRecoverTimeout: () => Promise<void>;
   backToEdit: () => void;
 }
+
 
 // Fields in on-screen order, which is also the order the first invalid one is
 // searched for on submit. Cliff is the only optional field.
@@ -112,6 +123,10 @@ export function useCreateStreamForm(): CreateStreamForm {
   // The token remembered from the last stream, offered as the default for a
   // new form and clearable on demand. See lib/last-token.ts.
   const [rememberedToken, setRememberedToken] = useState<string | null>(() => readLastToken());
+  const [tokenDecimals, setTokenDecimals] = useState<number>(() => {
+    return (values.token ? getCachedTokenDecimals(values.token) : null) ?? DEFAULT_TOKEN_DECIMALS;
+  });
+  const [decimalsNotice, setDecimalsNotice] = useState<string | null>(null);
   const [errors, setErrors] = useState<CreateFormErrors>({});
   const [submitting, setSubmitting] = useState(false);
   const [stage, setStage] = useState<TxStage | null>(null);
@@ -121,6 +136,7 @@ export function useCreateStreamForm(): CreateStreamForm {
   // step. Holds the exact parameters confirm will submit, so the review always
   // shows what will actually go on-chain.
   const [prepared, setPrepared] = useState<CreateStreamParams | null>(null);
+
   // Best-effort network-fee estimate for the reviewed stream. Starts
   // "unavailable" so nothing is claimed before the review step; re-runs each
   // time the user reaches review. A failure here never blocks confirming.
@@ -172,6 +188,41 @@ export function useCreateStreamForm(): CreateStreamForm {
     return true;
   }
 
+  useEffect(() => {
+    if (!token || !isValidContractAddress(token)) {
+      setTokenDecimals(DEFAULT_TOKEN_DECIMALS);
+      setDecimalsNotice(null);
+      return;
+    }
+
+    let active = true;
+    if (!getCachedTokenMetadata(token)) {
+      readTokenMetadata(token).catch(() => {});
+    }
+
+    readTokenDecimals(token)
+      .then((dec) => {
+        if (!active) return;
+        setTokenDecimals(dec);
+        setDecimalsNotice(null);
+        if (amount) {
+          setFieldErrors({ amount: amountFieldError(amount, dec) });
+        }
+      })
+      .catch(() => {
+        if (!active) return;
+        setTokenDecimals(DEFAULT_TOKEN_DECIMALS);
+        setDecimalsNotice("Could not read token decimals from contract. Defaulting to 7 decimals.");
+        if (amount) {
+          setFieldErrors({ amount: amountFieldError(amount, DEFAULT_TOKEN_DECIMALS) });
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [token]);
+
   // Updates one field and re-runs the validation that depends on it, including
   // end and cliff when the window they are checked against moves.
   function setField(field: CreateFormField, value: string) {
@@ -184,8 +235,9 @@ export function useCreateStreamForm(): CreateStreamForm {
         setFieldErrors({ token: tokenFieldError(value) });
         break;
       case "amount":
-        setFieldErrors({ amount: amountFieldError(value) });
+        setFieldErrors({ amount: amountFieldError(value, tokenDecimals) });
         break;
+
       case "start": {
         // A duration already set takes over filling `end` for the new start;
         // only fall back to checking it against the unchanged end value when
@@ -285,8 +337,9 @@ export function useCreateStreamForm(): CreateStreamForm {
   // error-free, so an incomplete or invalid form never shows a rate.
   const previewRate =
     amount && start && end && !errors.amount && !errors.start && !errors.end
-      ? vestingRatePerDay(parseAmount(amount), toUnix(start), toUnix(end))
+      ? vestingRatePerDay(parseAmount(amount, tokenDecimals), toUnix(start), toUnix(end))
       : null;
+
 
   // Live duration preview, only for a valid window; end-before-start already
   // flags the End field, so no misleading negative or zero span is shown.
@@ -381,7 +434,7 @@ export function useCreateStreamForm(): CreateStreamForm {
 
     // Re-run the shared rules at submit time so a stale live error can never
     // disagree with what is accepted for the transaction.
-    const validationErrors = validateCreateStreamForm(values);
+    const validationErrors = validateCreateStreamForm(values, tokenDecimals);
     setErrors(validationErrors);
     const firstInvalid = FIELD_ORDER.find((field) => !!validationErrors[field]);
     if (firstInvalid) {
@@ -399,7 +452,7 @@ export function useCreateStreamForm(): CreateStreamForm {
       sender: wallet.address,
       recipient,
       token,
-      totalAmount: parseAmount(amount),
+      totalAmount: parseAmount(amount, tokenDecimals),
       startTime,
       endTime,
       cliffTime,
@@ -481,6 +534,8 @@ export function useCreateStreamForm(): CreateStreamForm {
     timeoutHash,
     error,
     prepared,
+    tokenDecimals,
+    decimalsNotice,
     feeEstimate,
     balanceCheck,
     rememberedToken,
@@ -489,6 +544,7 @@ export function useCreateStreamForm(): CreateStreamForm {
     handleConfirm,
     handleRecoverTimeout,
     backToEdit: () => {
+
       // Discard any in-flight reads so a late result can't land on the next
       // review the user opens.
       feeEstimateToken.current += 1;

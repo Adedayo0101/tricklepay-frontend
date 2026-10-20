@@ -39,6 +39,30 @@ describe("parseHumanAmount", () => {
     );
     expect(parseHumanAmount("1.1234567")).toBe(11_234_567n);
   });
+
+  it("handles 6-decimal tokens", () => {
+    expect(parseHumanAmount("1.5", 6)).toBe(1_500_000n);
+    expect(parseHumanAmount("0.000001", 6)).toBe(1n);
+    expect(() => parseHumanAmount("0.0000001", 6)).toThrow(
+      "Amount cannot have more than 6 decimal places.",
+    );
+  });
+
+  it("handles 7-decimal tokens", () => {
+    expect(parseHumanAmount("1.5", 7)).toBe(15_000_000n);
+    expect(parseHumanAmount("0.0000001", 7)).toBe(1n);
+    expect(() => parseHumanAmount("0.00000001", 7)).toThrow(
+      "Amount cannot have more than 7 decimal places.",
+    );
+  });
+
+  it("handles 18-decimal tokens", () => {
+    expect(parseHumanAmount("1.5", 18)).toBe(1_500_000_000_000_000_000n);
+    expect(parseHumanAmount("0.000000000000000001", 18)).toBe(1n);
+    expect(() => parseHumanAmount("0.0000000000000000001", 18)).toThrow(
+      "Amount cannot have more than 18 decimal places.",
+    );
+  });
 });
 
 describe("withdrawalAmountError", () => {
@@ -88,5 +112,31 @@ describe("withdrawalAmountError", () => {
     expect(withdrawalAmountError("1", 1234567n)).toBe(
       "Amount exceeds withdrawable balance (0.1234567).",
     );
+  });
+
+  it("handles custom decimals for balance limit checks and error messages", () => {
+    // 6 decimals: 10 tokens = 10_000_000n
+    expect(withdrawalAmountError("10.000001", 10_000_000n, 6)).toBe(
+      "Amount exceeds withdrawable balance (10).",
+    );
+    expect(withdrawalAmountError("10.0000001", 10_000_000n, 6)).toBe(
+      "Amount cannot have more than 6 decimal places.",
+    );
+
+    // 18 decimals: 10 tokens = 10_000_000_000_000_000_000n
+    expect(
+      withdrawalAmountError(
+        "10.000000000000000001",
+        10_000_000_000_000_000_000n,
+        18,
+      ),
+    ).toBe("Amount exceeds withdrawable balance (10).");
+    expect(
+      withdrawalAmountError(
+        "10.0000000000000000001",
+        10_000_000_000_000_000_000n,
+        18,
+      ),
+    ).toBe("Amount cannot have more than 18 decimal places.");
   });
 });

@@ -52,7 +52,7 @@ function pageQuery(
 ): ListStreamsParams {
   const party: ListStreamsParams =
     role === "sender" ? { sender: address } : { recipient: address };
-  return { ...party, limit: pageSize, offset, status };
+  return { ...party, limit: pageSize, offset, status, includeTotal: true };
 }
 
 /**
@@ -159,7 +159,7 @@ export function useStreamPage(
           endRequest(controller);
           if (generation.current !== gen) return;
           setStreams(page.streams);
-          setTotal(page.total);
+          setTotal(page.total ?? page.streams.length);
           setFetched(page.streams.length);
           setLastUpdated(Date.now());
           return;
@@ -201,7 +201,7 @@ export function useStreamPage(
       .then((page) => {
         if (generation.current !== gen) return;
         setStreams(page.streams);
-        setTotal(page.total);
+        setTotal(page.total ?? page.streams.length);
         setFetched(page.streams.length);
         setLastUpdated(Date.now());
       })
@@ -257,7 +257,7 @@ export function useStreamPage(
         setFetched(fetched + page.streams.length);
         // An empty page means the result set shrank between requests; trust the
         // rows in hand over the reported total so the button does not stick.
-        setTotal(page.streams.length === 0 ? fetched : page.total);
+        setTotal(page.streams.length === 0 ? fetched : (page.total ?? fetched));
         setLastUpdated(Date.now());
       })
       .catch((err: unknown) => {

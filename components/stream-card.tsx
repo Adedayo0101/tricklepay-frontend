@@ -5,9 +5,11 @@ import { StreamStatusBadge } from "@/components/stream-status-badge";
 import { formatTokenAmount, truncateAddress } from "@/lib/format";
 import { formatRemaining, formatSchedule } from "@/lib/schedule";
 import { markNavigatingToStream } from "@/lib/scroll";
+import { useTokenMetadata } from "@/lib/token-metadata";
 import type { StreamView } from "@/types/stream";
 
 export function StreamCard({ stream }: { stream: StreamView }): JSX.Element {
+  useTokenMetadata(stream.token);
   const remaining = formatRemaining(stream);
   // Only a cliff strictly after the start is worth a row; one at or before it
   // changes nothing about when withdrawals begin.
@@ -39,11 +41,15 @@ export function StreamCard({ stream }: { stream: StreamView }): JSX.Element {
         </div>
         <div>
           <p className="text-neutral-500">Withdrawable</p>
-          <p className="text-neutral-100">{formatTokenAmount(stream.withdrawable, stream.token)}</p>
+          <p className="text-neutral-100" title={stream.token}>
+            {formatTokenAmount(stream.withdrawable, stream.token)}
+          </p>
         </div>
         <div>
           <p className="text-neutral-500">Total</p>
-          <p className="text-neutral-100">{formatTokenAmount(stream.totalAmount, stream.token)}</p>
+          <p className="text-neutral-100" title={stream.token}>
+            {formatTokenAmount(stream.totalAmount, stream.token)}
+          </p>
         </div>
         {cliff && (
           <div className="col-span-2" data-testid="stream-card-cliff">

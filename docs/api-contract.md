@@ -222,6 +222,35 @@ everything else falls through to the generic `Error` handler. A new branch that
 duplicates an existing category will either be unreachable or produce a second
 banner for the same failure.
 
+### Recording and updating backend fixtures
+
+The unit tests in `lib/api-backend-fixtures.test.ts` validate `parseStreamListResponse`, `parseStreamView`, and client error handling against authentic responses recorded from a running `tricklepay-backend` instance.
+
+Fixtures live in `test/fixtures/api/`. To re-record or update them:
+
+1. Start `tricklepay-backend` locally (defaults to `http://localhost:3000`).
+2. Run the commands that produce each fixture:
+   ```bash
+   # List with total
+   curl -s "http://localhost:3000/streams?limit=25&offset=0&includeTotal=true" > test/fixtures/api/list-with-total.json
+
+   # List without total (omitted by default)
+   curl -s "http://localhost:3000/streams?limit=25&offset=0" > test/fixtures/api/list-without-total.json
+
+   # Stream detail
+   curl -s "http://localhost:3000/streams/1" > test/fixtures/api/stream-detail.json
+
+   # 400 Bad Request
+   curl -s "http://localhost:3000/streams?unknownParam=1" > test/fixtures/api/error-400.json
+
+   # 404 Not Found
+   curl -s "http://localhost:3000/streams/nonexistent-stream-999" > test/fixtures/api/error-404.json
+
+   # 429 Too Many Requests
+   curl -s "http://localhost:3000/streams" > test/fixtures/api/error-429.json
+   ```
+3. Run `npm test` to verify that the schema parser and API client tests succeed against the updated fixtures.
+
 ## 2. On-chain contract surface
 
 The frontend calls the deployed stream contract (`NEXT_PUBLIC_CONTRACT_ID`)
