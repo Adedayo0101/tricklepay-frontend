@@ -284,6 +284,71 @@ describe("CreateStreamFields", () => {
     });
   });
 
+  describe("the long-duration warning", () => {
+    it("appears under End when the stream would run more than ten years", () => {
+      render(
+        <CreateStreamFields
+          {...defaultProps}
+          values={{ ...defaultProps.values, start: "2026-08-27T10:00", end: "2062-08-27T10:00" }}
+        />,
+      );
+
+      expect(screen.getByText(/This stream will run for 36 years/)).toBeTruthy();
+    });
+
+    it("does not appear for a shorter duration", () => {
+      render(
+        <CreateStreamFields
+          {...defaultProps}
+          values={{ ...defaultProps.values, start: "2026-08-27T10:00", end: "2030-08-27T10:00" }}
+        />,
+      );
+
+      expect(screen.queryByText(/more than ten years/)).toBeNull();
+    });
+
+    it("does not appear on the Start or Cliff fields, only End", () => {
+      render(
+        <CreateStreamFields
+          {...defaultProps}
+          values={{
+            ...defaultProps.values,
+            start: "2026-08-27T10:00",
+            end: "2062-08-27T10:00",
+            cliff: "2027-08-27T10:00",
+          }}
+        />,
+      );
+
+      expect(screen.getAllByText(/more than ten years/)).toHaveLength(1);
+    });
+
+    it("does not block submission — the submit button stays enabled", () => {
+      render(
+        <CreateStreamFields
+          {...defaultProps}
+          values={{ ...defaultProps.values, start: "2026-08-27T10:00", end: "2062-08-27T10:00" }}
+        />,
+      );
+
+      expect(screen.getByRole("button", { name: "Review stream" }).hasAttribute("disabled")).toBe(
+        false,
+      );
+    });
+
+    it("does not appear when the End field has a validation error", () => {
+      render(
+        <CreateStreamFields
+          {...defaultProps}
+          values={{ ...defaultProps.values, start: "2026-08-27T10:00", end: "2062-08-27T10:00" }}
+          errors={{ end: "End must be after start." }}
+        />,
+      );
+
+      expect(screen.queryByText(/more than ten years/)).toBeNull();
+    });
+  });
+
   describe('the "Use XLM" button', () => {
     it("fills the token field with the configured network's native asset contract", () => {
       const onFieldChange = vi.fn();

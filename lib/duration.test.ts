@@ -7,6 +7,7 @@ import {
   durationFieldError,
   isDurationUnit,
   isStartInPast,
+  longDurationWarning,
   nowAsDatetimeLocal,
 } from "./duration";
 
@@ -180,5 +181,53 @@ describe("isStartInPast", () => {
 
   it("defaults to the current instant when none is given", () => {
     expect(isStartInPast("2020-01-01T00:00")).toBe(true);
+  });
+});
+
+describe("longDurationWarning", () => {
+  const START = "2026-08-27T10:00";
+
+  it("is null at exactly ten years — the threshold itself is not 'more than'", () => {
+    expect(longDurationWarning(START, "2036-08-27T10:00")).toBeNull();
+  });
+
+  it("warns one day past the ten-year threshold, naming the duration", () => {
+    const warning = longDurationWarning(START, "2036-08-28T10:00");
+    expect(warning).toMatch(/more than ten years/);
+    expect(warning).toMatch(/\d+ days?/);
+  });
+
+  it("names an exact-year span in years, not days — the mistyped-year case", () => {
+    // Same month/day/time, only the year digit changed: exactly what someone
+    // fat-fingering "2062" for "2026" would produce.
+    expect(longDurationWarning(START, "2062-08-27T10:00")).toBe(
+      "This stream will run for 36 years — more than ten years. Double-check the end date.",
+    );
+  });
+
+  it("is null for a duration under ten years", () => {
+    expect(longDurationWarning(START, "2030-08-27T10:00")).toBeNull();
+  });
+
+  it("is null when start or end is missing", () => {
+    expect(longDurationWarning("", "2062-08-27T10:00")).toBeNull();
+    expect(longDurationWarning(START, "")).toBeNull();
+  });
+
+  it("is null when end is not after start", () => {
+    expect(longDurationWarning(START, START)).toBeNull();
+    expect(longDurationWarning(START, "2020-01-01T00:00")).toBeNull();
+  });
+
+  it("is null for an unparseable value", () => {
+    expect(longDurationWarning("not-a-date", "2062-08-27T10:00")).toBeNull();
+    expect(longDurationWarning(START, "not-a-date")).toBeNull();
+  });
+
+  it("accounts for leap years rather than using a fixed day count", () => {
+    // 2028 and 2032 are both leap years within this ten-year span, so a fixed
+    // 3650-day threshold would fire a couple of days early.
+    const tenCalendarYearsLater = "2036-08-27T10:00";
+    expect(longDurationWarning(START, tenCalendarYearsLater)).toBeNull();
   });
 });

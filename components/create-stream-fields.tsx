@@ -2,7 +2,7 @@ import type { JSX, FormEvent, ReactNode } from "react";
 
 import type { CreateFormErrors, CreateFormField, CreateFormRefs } from "@/hooks/use-create-stream-form";
 import { isSelfRecipient } from "@/lib/create-stream-validation";
-import { DURATION_UNITS, isStartInPast, nowAsDatetimeLocal } from "@/lib/duration";
+import { DURATION_UNITS, isStartInPast, longDurationWarning, nowAsDatetimeLocal } from "@/lib/duration";
 import { formatTokenRate } from "@/lib/format";
 import { nativeAssetContractId } from "@/lib/native-asset";
 import { SCHEDULE_PRESETS } from "@/lib/schedule-presets";
@@ -60,11 +60,13 @@ function DateTimeField({
   const error = errors[name];
   const utc = formatUtcFromLocalInput(values[name]);
   const pastStartHint = name === "start" && !error && isStartInPast(values[name]);
+  const longDuration = name === "end" && !error ? longDurationWarning(values.start, values.end) : null;
 
   const describedBy = [
     error ? `${name}-error` : null,
     !error && utc ? `${name}-utc` : null,
     pastStartHint ? `${name}-past-hint` : null,
+    longDuration ? `${name}-long-duration-hint` : null,
   ]
     .filter(Boolean)
     .join(" ");
@@ -101,6 +103,11 @@ function DateTimeField({
       {pastStartHint && (
         <span id="start-past-hint" className="text-xs text-amber-400">
           This start is in the past — the elapsed time will vest and become withdrawable immediately once the stream is created.
+        </span>
+      )}
+      {longDuration && (
+        <span id={`${name}-long-duration-hint`} className="text-xs text-amber-400">
+          {longDuration}
         </span>
       )}
     </Field>
