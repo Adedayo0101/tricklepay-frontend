@@ -53,6 +53,13 @@ export const metadata: Metadata = {
   description:
     "TricklePay lets you stream token payments on Stellar in real time — create, manage, and withdraw from vesting streams without leaving your browser.",
   metadataBase: APP_URL ? new URL(APP_URL) : null,
+  // Tints the mobile browser address bar to match the app background.
+  // dark:  neutral-950 (#0a0a0a) — the default page background.
+  // light: neutral-950 in the light theme maps to #fafafa (see globals.css).
+  themeColor: [
+    { media: "(prefers-color-scheme: dark)", color: "#0a0a0a" },
+    { media: "(prefers-color-scheme: light)", color: "#fafafa" },
+  ],
   openGraph: {
     type: "website",
     url: "/",
@@ -106,6 +113,75 @@ export default function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
       </head>
       <body className="min-h-screen bg-neutral-950 text-neutral-100 antialiased">
+        {/* Shown only when JavaScript is disabled. The app requires JS for
+            wallet signing — there is no useful fallback without it. The styles
+            are inline so they work without any CSS bundle loading. */}
+        <noscript>
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              minHeight: "100vh",
+              padding: "2rem",
+              textAlign: "center",
+              fontFamily: "system-ui, sans-serif",
+              backgroundColor: "#0a0a0a",
+              color: "#f5f5f5",
+            }}
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="40"
+              height="40"
+              viewBox="0 0 16 16"
+              fill="#6366f1"
+              aria-hidden="true"
+              style={{ marginBottom: "1rem" }}
+            >
+              <path d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1ZM7.25 5a.75.75 0 0 1 1.5 0v3.25a.75.75 0 0 1-1.5 0V5Zm.75 7a1 1 0 1 1 0-2 1 1 0 0 1 0 2Z" />
+            </svg>
+            <h1
+              style={{
+                fontSize: "1.25rem",
+                fontWeight: 600,
+                marginBottom: "0.5rem",
+                color: "#fafafa",
+              }}
+            >
+              JavaScript is required
+            </h1>
+            <p
+              style={{
+                maxWidth: "28rem",
+                fontSize: "0.9rem",
+                lineHeight: 1.6,
+                color: "#a3a3a3",
+                marginBottom: "0.75rem",
+              }}
+            >
+              TricklePay signs transactions through a browser wallet extension.
+              Please enable JavaScript and install a compatible wallet to use this
+              app.
+            </p>
+            <a
+              href="https://freighter.app"
+              style={{
+                display: "inline-block",
+                marginTop: "0.5rem",
+                padding: "0.5rem 1.25rem",
+                borderRadius: "0.375rem",
+                border: "1px solid #404040",
+                color: "#d4d4d4",
+                textDecoration: "none",
+                fontSize: "0.875rem",
+              }}
+            >
+              Get Freighter wallet
+            </a>
+          </div>
+        </noscript>
         <ThemeProvider>
           <WalletProvider>
             <SkipLink />
