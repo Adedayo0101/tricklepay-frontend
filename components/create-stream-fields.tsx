@@ -1,7 +1,7 @@
 import type { JSX, FormEvent, ReactNode } from "react";
 
 import type { CreateFormErrors, CreateFormField, CreateFormRefs } from "@/hooks/use-create-stream-form";
-import { DURATION_UNITS, nowAsDatetimeLocal } from "@/lib/duration";
+import { DURATION_UNITS, isStartInPast, nowAsDatetimeLocal } from "@/lib/duration";
 import { formatTokenRate } from "@/lib/format";
 import { nativeAssetContractId } from "@/lib/native-asset";
 import { SCHEDULE_PRESETS } from "@/lib/schedule-presets";
@@ -58,6 +58,15 @@ function DateTimeField({
 }: FieldsProps & { name: "start" | "end" | "cliff"; label: string }) {
   const error = errors[name];
   const utc = formatUtcFromLocalInput(values[name]);
+  const pastStartHint = name === "start" && !error && isStartInPast(values[name]);
+
+  const describedBy = [
+    error ? `${name}-error` : null,
+    !error && utc ? `${name}-utc` : null,
+    pastStartHint ? `${name}-past-hint` : null,
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   return (
     <Field label={label} error={error} errorId={`${name}-error`}>
@@ -70,7 +79,7 @@ function DateTimeField({
           value={values[name]}
           onChange={(e) => onFieldChange(name, e.target.value)}
           aria-invalid={!!error}
-          aria-describedby={error ? `${name}-error` : utc ? `${name}-utc` : undefined}
+          aria-describedby={describedBy || undefined}
         />
         {name === "start" && (
           <button
@@ -86,6 +95,11 @@ function DateTimeField({
       {!error && utc && (
         <span id={`${name}-utc`} className="text-xs text-neutral-500">
           {utc}
+        </span>
+      )}
+      {pastStartHint && (
+        <span id="start-past-hint" className="text-xs text-amber-400">
+          This start is in the past — the elapsed time will vest and become withdrawable immediately once the stream is created.
         </span>
       )}
     </Field>

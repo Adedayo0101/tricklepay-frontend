@@ -6,6 +6,7 @@ import {
   DURATION_UNITS,
   durationFieldError,
   isDurationUnit,
+  isStartInPast,
   nowAsDatetimeLocal,
 } from "./duration";
 
@@ -151,5 +152,33 @@ describe("nowAsDatetimeLocal", () => {
     // of runs; allow either the same minute or the one right after it so the
     // test isn't flaky on the rare run that straddles a minute boundary.
     expect([expected, nowAsDatetimeLocal(new Date(now.getTime() + 60_000))]).toContain(before);
+  });
+});
+
+describe("isStartInPast", () => {
+  const now = new Date(2026, 7, 27, 12, 0, 0);
+
+  it("is true for a start before now", () => {
+    expect(isStartInPast("2026-08-26T12:00", now)).toBe(true);
+  });
+
+  it("is false for a start after now", () => {
+    expect(isStartInPast("2026-08-28T12:00", now)).toBe(false);
+  });
+
+  it("is false for a start equal to now", () => {
+    expect(isStartInPast(nowAsDatetimeLocal(now), now)).toBe(false);
+  });
+
+  it("is false for an empty value — nothing entered yet is not 'in the past'", () => {
+    expect(isStartInPast("", now)).toBe(false);
+  });
+
+  it("is false for an unparseable value", () => {
+    expect(isStartInPast("not-a-date", now)).toBe(false);
+  });
+
+  it("defaults to the current instant when none is given", () => {
+    expect(isStartInPast("2020-01-01T00:00")).toBe(true);
   });
 });

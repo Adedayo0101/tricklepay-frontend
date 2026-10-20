@@ -58,6 +58,21 @@ export function nowAsDatetimeLocal(now: Date = new Date()): string {
 }
 
 /**
+ * Whether a `datetime-local` start value names an instant already in the
+ * past. The contract accepts a past start as long as end is still in the
+ * future, and the elapsed portion vests — and becomes withdrawable —
+ * immediately once the stream is created. Worth flagging to the sender, but
+ * not an error: an empty or unparseable value is not "in the past", it is
+ * just not a start yet.
+ */
+export function isStartInPast(start: string, now: Date = new Date()): boolean {
+  if (!start) return false;
+  const date = new Date(start);
+  if (Number.isNaN(date.getTime())) return false;
+  return date.getTime() < now.getTime();
+}
+
+/**
  * Adds a duration to a `datetime-local` start value and returns the resulting
  * `datetime-local` string, or `null` if `start` or `amount` don't parse (an
  * incomplete form, not a user-facing error — `durationFieldError` covers

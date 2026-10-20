@@ -125,6 +125,76 @@ describe("CreateStreamFields", () => {
     });
   });
 
+  describe("the past-start hint", () => {
+    it("appears under Start when the start time is in the past", () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date(2026, 7, 27, 10, 0, 0));
+
+      render(
+        <CreateStreamFields
+          {...defaultProps}
+          values={{ ...defaultProps.values, start: "2026-08-26T10:00" }}
+        />,
+      );
+
+      expect(screen.getByText(/vest and become withdrawable immediately/)).toBeTruthy();
+
+      vi.useRealTimers();
+    });
+
+    it("does not appear when the start time is in the future", () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date(2026, 7, 27, 10, 0, 0));
+
+      render(
+        <CreateStreamFields
+          {...defaultProps}
+          values={{ ...defaultProps.values, start: "2026-08-28T10:00" }}
+        />,
+      );
+
+      expect(screen.queryByText(/vest and become withdrawable immediately/)).toBeNull();
+
+      vi.useRealTimers();
+    });
+
+    it("does not appear when start is empty", () => {
+      render(<CreateStreamFields {...defaultProps} />);
+
+      expect(screen.queryByText(/vest and become withdrawable immediately/)).toBeNull();
+    });
+
+    it("does not block submission — the submit button stays enabled", () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date(2026, 7, 27, 10, 0, 0));
+
+      render(
+        <CreateStreamFields
+          {...defaultProps}
+          values={{ ...defaultProps.values, start: "2026-08-26T10:00" }}
+        />,
+      );
+
+      expect(screen.getByRole("button", { name: "Review stream" }).hasAttribute("disabled")).toBe(
+        false,
+      );
+
+      vi.useRealTimers();
+    });
+
+    it("does not appear when Start itself has a validation error", () => {
+      render(
+        <CreateStreamFields
+          {...defaultProps}
+          values={{ ...defaultProps.values, start: "2020-01-01T00:00" }}
+          errors={{ start: "Start date is required." }}
+        />,
+      );
+
+      expect(screen.queryByText(/vest and become withdrawable immediately/)).toBeNull();
+    });
+  });
+
   describe('the "Use XLM" button', () => {
     it("fills the token field with the configured network's native asset contract", () => {
       const onFieldChange = vi.fn();
