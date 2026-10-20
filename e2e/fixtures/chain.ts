@@ -104,6 +104,17 @@ export interface ChainStubOptions {
   sequence?: string;
   /** Statuses returned by successive getTransaction calls. */
   confirmationStatuses?: Array<"PENDING" | "SUCCESS">;
+  /**
+   * When set, simulateTransaction reports this as a simulation failure
+   * (`{ error: simulationError }`) instead of succeeding. This is what
+   * prepareTransaction throws verbatim (`new Error(simResponse.error)`), so
+   * the string should look like a real Soroban failure — typically an
+   * "Error(Contract, #N)" token, optionally attributed to a contract via a
+   * "contract:C…, topics:[error, Error(Contract, #N)]" diagnostic line. See
+   * lib/contract-errors.ts's parseContractError, which reads exactly that
+   * shape back out.
+   */
+  simulationError?: string;
 }
 
 // Records what the app asked the chain to do, for assertions.
@@ -133,6 +144,7 @@ export async function stubChain(page: Page, options: ChainStubOptions): Promise<
       sequence,
       calls,
       confirmationStatuses: options.confirmationStatuses,
+      simulationError: options.simulationError,
     });
     return route.fulfill({
       status: 200,
@@ -151,6 +163,7 @@ function rpcResult(
     sequence: string;
     calls: ChainCalls;
     confirmationStatuses?: Array<"PENDING" | "SUCCESS">;
+    simulationError?: string;
   },
 ): unknown {
   switch (request.method) {
@@ -170,6 +183,11 @@ function rpcResult(
       };
 
     case "simulateTransaction":
+      if (ctx.simulationError) {
+        // The shape prepareTransaction checks for (Api.isSimulationError:
+        // `"error" in sim`) before throwing `new Error(sim.error)` verbatim.
+        return { latestLedger: 1000, events: [], error: ctx.simulationError };
+      }
       return {
         latestLedger: 1000,
         minResourceFee: "100",
