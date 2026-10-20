@@ -286,7 +286,6 @@ Configure the hook by running:
 ```bash
 npm run setup-hooks
 ```
-*(Running `npm install` also invokes `npm run prepare`, which automatically sets `core.hooksPath` to `.githooks`.)*
 
 #### What It Runs
 - **Lint**: Runs `eslint` on staged TypeScript and JavaScript files (`.ts`, `.tsx`, `.js`, `.mjs`).
