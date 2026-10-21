@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { FormDraft } from "@/types/form";
 
-import { endFieldError, validateCreateStreamForm } from "./create-stream-validation";
+import { endFieldError, isSelfRecipient, validateCreateStreamForm } from "./create-stream-validation";
 
 const validDraft: FormDraft = {
   recipient: "GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN7",
@@ -162,5 +162,32 @@ describe("validateCreateStreamForm — duration", () => {
     expect(
       validateCreateStreamForm({ ...validDraft, durationAmount: "30" }).durationAmount,
     ).toBeUndefined();
+  });
+});
+
+describe("isSelfRecipient", () => {
+  const WALLET = "GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN7";
+
+  it("is true when the recipient equals the connected wallet", () => {
+    expect(isSelfRecipient(WALLET, WALLET)).toBe(true);
+  });
+
+  it("is true regardless of case", () => {
+    expect(isSelfRecipient(WALLET.toLowerCase(), WALLET)).toBe(true);
+    expect(isSelfRecipient(WALLET, WALLET.toLowerCase())).toBe(true);
+  });
+
+  it("is false for a different address", () => {
+    expect(isSelfRecipient("GBBZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN7", WALLET)).toBe(
+      false,
+    );
+  });
+
+  it("is false when no wallet is connected", () => {
+    expect(isSelfRecipient(WALLET, null)).toBe(false);
+  });
+
+  it("is false for an empty recipient", () => {
+    expect(isSelfRecipient("", WALLET)).toBe(false);
   });
 });

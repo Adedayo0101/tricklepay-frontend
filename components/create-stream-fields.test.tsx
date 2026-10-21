@@ -34,6 +34,7 @@ describe("CreateStreamFields", () => {
     onApplyPreset: vi.fn(),
     rememberedToken: null,
     onClearRememberedToken: vi.fn(),
+    walletAddress: null,
     previewRate: null,
     previewDuration: null,
     feedback: null,
@@ -122,6 +123,229 @@ describe("CreateStreamFields", () => {
       expect(screen.getAllByRole("button", { name: "Set start to the current time" })).toHaveLength(
         1,
       );
+    });
+  });
+
+  describe("the past-start hint", () => {
+    it("appears under Start when the start time is in the past", () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date(2026, 7, 27, 10, 0, 0));
+
+      render(
+        <CreateStreamFields
+          {...defaultProps}
+          values={{ ...defaultProps.values, start: "2026-08-26T10:00" }}
+        />,
+      );
+
+      expect(screen.getByText(/vest and become withdrawable immediately/)).toBeTruthy();
+
+      vi.useRealTimers();
+    });
+
+    it("does not appear when the start time is in the future", () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date(2026, 7, 27, 10, 0, 0));
+
+      render(
+        <CreateStreamFields
+          {...defaultProps}
+          values={{ ...defaultProps.values, start: "2026-08-28T10:00" }}
+        />,
+      );
+
+      expect(screen.queryByText(/vest and become withdrawable immediately/)).toBeNull();
+
+      vi.useRealTimers();
+    });
+
+    it("does not appear when start is empty", () => {
+      render(<CreateStreamFields {...defaultProps} />);
+
+      expect(screen.queryByText(/vest and become withdrawable immediately/)).toBeNull();
+    });
+
+    it("does not block submission — the submit button stays enabled", () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date(2026, 7, 27, 10, 0, 0));
+
+      render(
+        <CreateStreamFields
+          {...defaultProps}
+          values={{ ...defaultProps.values, start: "2026-08-26T10:00" }}
+        />,
+      );
+
+      expect(screen.getByRole("button", { name: "Review stream" }).hasAttribute("disabled")).toBe(
+        false,
+      );
+
+      vi.useRealTimers();
+    });
+
+    it("does not appear when Start itself has a validation error", () => {
+      render(
+        <CreateStreamFields
+          {...defaultProps}
+          values={{ ...defaultProps.values, start: "2020-01-01T00:00" }}
+          errors={{ start: "Start date is required." }}
+        />,
+      );
+
+      expect(screen.queryByText(/vest and become withdrawable immediately/)).toBeNull();
+    });
+  });
+
+  describe("the self-recipient hint", () => {
+    const WALLET = "GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN7";
+
+    it("appears when the recipient matches the connected wallet", () => {
+      render(
+        <CreateStreamFields
+          {...defaultProps}
+          walletAddress={WALLET}
+          values={{ ...defaultProps.values, recipient: WALLET }}
+        />,
+      );
+
+      expect(screen.getByText("You are streaming to yourself.")).toBeTruthy();
+    });
+
+    it("ignores case when comparing the recipient to the connected wallet", () => {
+      render(
+        <CreateStreamFields
+          {...defaultProps}
+          walletAddress={WALLET}
+          values={{ ...defaultProps.values, recipient: WALLET.toLowerCase() }}
+        />,
+      );
+
+      expect(screen.getByText("You are streaming to yourself.")).toBeTruthy();
+    });
+
+    it("does not appear for a different recipient", () => {
+      render(
+        <CreateStreamFields
+          {...defaultProps}
+          walletAddress={WALLET}
+          values={{
+            ...defaultProps.values,
+            recipient: "GBBZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN7",
+          }}
+        />,
+      );
+
+      expect(screen.queryByText("You are streaming to yourself.")).toBeNull();
+    });
+
+    it("does not appear when no wallet is connected", () => {
+      render(
+        <CreateStreamFields
+          {...defaultProps}
+          walletAddress={null}
+          values={{ ...defaultProps.values, recipient: WALLET }}
+        />,
+      );
+
+      expect(screen.queryByText("You are streaming to yourself.")).toBeNull();
+    });
+
+    it("does not appear when the recipient field is empty", () => {
+      render(<CreateStreamFields {...defaultProps} walletAddress={WALLET} />);
+
+      expect(screen.queryByText("You are streaming to yourself.")).toBeNull();
+    });
+
+    it("does not block submission — the submit button stays enabled", () => {
+      render(
+        <CreateStreamFields
+          {...defaultProps}
+          walletAddress={WALLET}
+          values={{ ...defaultProps.values, recipient: WALLET }}
+        />,
+      );
+
+      expect(screen.getByRole("button", { name: "Review stream" }).hasAttribute("disabled")).toBe(
+        false,
+      );
+    });
+
+    it("does not appear when the recipient field has a validation error", () => {
+      render(
+        <CreateStreamFields
+          {...defaultProps}
+          walletAddress={WALLET}
+          values={{ ...defaultProps.values, recipient: WALLET }}
+          errors={{ recipient: "Must be a valid G... or C... Stellar address." }}
+        />,
+      );
+
+      expect(screen.queryByText("You are streaming to yourself.")).toBeNull();
+    });
+  });
+
+  describe("the long-duration warning", () => {
+    it("appears under End when the stream would run more than ten years", () => {
+      render(
+        <CreateStreamFields
+          {...defaultProps}
+          values={{ ...defaultProps.values, start: "2026-08-27T10:00", end: "2062-08-27T10:00" }}
+        />,
+      );
+
+      expect(screen.getByText(/This stream will run for 36 years/)).toBeTruthy();
+    });
+
+    it("does not appear for a shorter duration", () => {
+      render(
+        <CreateStreamFields
+          {...defaultProps}
+          values={{ ...defaultProps.values, start: "2026-08-27T10:00", end: "2030-08-27T10:00" }}
+        />,
+      );
+
+      expect(screen.queryByText(/more than ten years/)).toBeNull();
+    });
+
+    it("does not appear on the Start or Cliff fields, only End", () => {
+      render(
+        <CreateStreamFields
+          {...defaultProps}
+          values={{
+            ...defaultProps.values,
+            start: "2026-08-27T10:00",
+            end: "2062-08-27T10:00",
+            cliff: "2027-08-27T10:00",
+          }}
+        />,
+      );
+
+      expect(screen.getAllByText(/more than ten years/)).toHaveLength(1);
+    });
+
+    it("does not block submission — the submit button stays enabled", () => {
+      render(
+        <CreateStreamFields
+          {...defaultProps}
+          values={{ ...defaultProps.values, start: "2026-08-27T10:00", end: "2062-08-27T10:00" }}
+        />,
+      );
+
+      expect(screen.getByRole("button", { name: "Review stream" }).hasAttribute("disabled")).toBe(
+        false,
+      );
+    });
+
+    it("does not appear when the End field has a validation error", () => {
+      render(
+        <CreateStreamFields
+          {...defaultProps}
+          values={{ ...defaultProps.values, start: "2026-08-27T10:00", end: "2062-08-27T10:00" }}
+          errors={{ end: "End must be after start." }}
+        />,
+      );
+
+      expect(screen.queryByText(/more than ten years/)).toBeNull();
     });
   });
 

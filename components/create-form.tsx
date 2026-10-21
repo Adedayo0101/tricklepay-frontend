@@ -74,6 +74,7 @@ export function CreateForm(): JSX.Element {
       onApplyPreset={form.applyPreset}
       rememberedToken={form.rememberedToken}
       onClearRememberedToken={form.clearRememberedToken}
+      walletAddress={form.sender}
       tokenDecimals={form.tokenDecimals}
       decimalsNotice={form.decimalsNotice}
       previewRate={form.previewRate}

@@ -58,6 +58,21 @@ export function nowAsDatetimeLocal(now: Date = new Date()): string {
 }
 
 /**
+ * Whether a `datetime-local` start value names an instant already in the
+ * past. The contract accepts a past start as long as end is still in the
+ * future, and the elapsed portion vests — and becomes withdrawable —
+ * immediately once the stream is created. Worth flagging to the sender, but
+ * not an error: an empty or unparseable value is not "in the past", it is
+ * just not a start yet.
+ */
+export function isStartInPast(start: string, now: Date = new Date()): boolean {
+  if (!start) return false;
+  const date = new Date(start);
+  if (Number.isNaN(date.getTime())) return false;
+  return date.getTime() < now.getTime();
+}
+
+/**
  * Adds a duration to a `datetime-local` start value and returns the resulting
  * `datetime-local` string, or `null` if `start` or `amount` don't parse (an
  * incomplete form, not a user-facing error — `durationFieldError` covers
@@ -184,4 +199,52 @@ export function deriveDuration(
   // Fallback to days
   const days = Math.max(1, Math.round(diffMs / (24 * 60 * 60 * 1000)));
   return { amount: String(days), unit: "days" };
+}
+
+const DURATION_UNIT_SINGULAR: Record<DurationUnit, string> = {
+  days: "day",
+  weeks: "week",
+  months: "month",
+  years: "year",
+};
+
+function namedDuration(amount: string, unit: DurationUnit): string {
+  const label = DURATION_UNIT_SINGULAR[unit];
+  return `${amount} ${label}${amount === "1" ? "" : "s"}`;
+}
+
+const LONG_DURATION_YEARS = 10;
+
+/**
+ * Warns when `end` is more than LONG_DURATION_YEARS calendar years after
+ * `start` — most often a mistyped year (2062 for 2026) that locks funds for
+ * decades with no way out: the contract has no pause, and cancelling returns
+ * the unvested part rather than letting it keep streaming on a corrected
+ * date. Not an error — a stream genuinely can run that long — so this only
+ * ever informs, never blocks.
+ *
+ * Calendar years (`setFullYear`), not a fixed day count, so a leap year
+ * doesn't shift the threshold by a day. Returns null when start or end is
+ * missing, unparseable, or end is not after start — the same conditions
+ * `endFieldError` already covers, so this never doubles as a validator.
+ */
+export function longDurationWarning(start: string, end: string): string | null {
+  if (!start || !end) return null;
+
+  const startDate = new Date(start);
+  const endDate = new Date(end);
+  if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) return null;
+  if (endDate.getTime() <= startDate.getTime()) return null;
+
+  const threshold = new Date(startDate);
+  threshold.setFullYear(threshold.getFullYear() + LONG_DURATION_YEARS);
+  if (endDate.getTime() <= threshold.getTime()) return null;
+
+  const duration = deriveDuration(start, end);
+  if (!duration) return null;
+
+  return (
+    `This stream will run for ${namedDuration(duration.amount, duration.unit)} — ` +
+    "more than ten years. Double-check the end date."
+  );
 }
