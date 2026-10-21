@@ -109,6 +109,10 @@ tricklepay-frontend/
 
 ## 🎨 Development Guidelines & Coding Standards
 
+Read the [component conventions](docs/component-conventions.md) for component,
+page, and data-hook boundaries, and the [hook conventions](docs/hook-conventions.md)
+for naming, return shapes, derived state, and effect cleanup.
+
 1. **TypeScript Strictness**:
    - Always export interface definitions for component props and domain models.
    - Avoid using `any`; specify exact types or use `unknown` with type guards.
