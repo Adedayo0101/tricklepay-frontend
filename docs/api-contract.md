@@ -6,12 +6,12 @@ should not assume anything about the other:
 1. **tricklepay-backend** — a read-only REST API, indexed off-chain, used for
    everything the app *displays* (`lib/api.ts`).
 2. **The Soroban stream contract** — invoked directly for everything the app
-   *writes** (`lib/contract.ts`). Reads are never served from the contract
+   *writes* (`lib/contract.ts`). Reads are never served from the contract
    directly; a write is expected to show up through the backend on the next
    fetch, once the indexer catches up.
 
 This split matters for correctness: after a successful `withdraw` or
-cancel`, the frontend does not trust the value it just wrote — it re-fetches
+`cancel`, the frontend does not trust the value it just wrote — it re-fetches
 the stream from the backend (see `onComplete` in `components/stream-actions.tsx`)
 and renders whatever comes back, including a value that briefly still shows
 the pre-transaction state if the indexer hasn't caught up yet.
@@ -22,34 +22,44 @@ Base URL: `NEXT_PUBLIC_API_URL` (see `lib/config.ts`).
 
 ### `GET /streams`
 
-Query parameters (all optional, all handled by `listStreams` in `lib/api.ts`):
+Query parameters are optional on the backend. The table distinguishes what
+`listStreams` in `lib/api.ts` sends from what the backend supports:
 
-| Param | Type | Meaning |
+| Param | Type | Backend meaning and current client behavior |
 | --- | --- | --- |
-| `sender` | Stellar address | Only streams sent by this account. |
-| `recipient` | Stellar address | Only streams received by this account. |
-| `limit` | integer | Page size. |
-| `offset` | integer | Page offset. |
+| `sender` | Stellar address | Only streams sent by this account; sent for the outgoing list. |
+| `recipient` | Stellar address | Only streams received by this account; sent for the incoming list. |
+| `limit` | integer | Page size; the dashboard sends its selected page size. |
+| `offset` | integer | Offset pagination; serialized when supplied to `listStreams`, but not used by the dashboard's cursor pagination. |
+| `cursor` | string | Opaque pagination cursor; the dashboard sends the previous response's `nextCursor` when loading more. Omitted for the first page and refreshes. |
+| `includeTotal` | boolean | Requests the matching row count when `true`; the backend omits `total` by default. The dashboard sends `includeTotal=true` on each page request. |
+| `cancelled` | boolean | Backend filter for cancellation state. The current `ListStreamsParams` does not expose or serialize it. |
+| `status` | `pending`, `streaming`, `completed`, or `cancelled` | **Unsupported by the backend.** The current client nevertheless sends this parameter for a selected status; `"all"` and `undefined` omit it. Do not rely on it for backend filtering; this is a client/backend mismatch. |
 
 The frontend only ever sets one of `sender`/`recipient` per request (a
 dashboard's "incoming" and "outgoing" sections are two separate calls — see
 `hooks/use-stream-page.ts`); it never asks the backend to filter by both at
 once.
 
-Response body — `StreamListResponse` (`types/stream.ts`):
+Response body — `StreamListResponse` (`types/stream.ts`), with the optional
+fields accepted by the frontend validator:
 
 ```ts
-{
-  streams: StreamView[],
-  total: number,   // total matches across every page, not streams.length
-  limit: number,
-  offset: number,
+interface StreamListResponse {
+  streams: StreamView[]; // required; each row follows the field contract below
+  total?: number;       // only returned with includeTotal=true
+  nextCursor?: string;  // continuation cursor, when another page is available
+  limit?: number;       // optional echoed pagination metadata
+  offset?: number;      // optional echoed pagination metadata
 }
 ```
 
-`total` is what drives the dashboard's "Load more (N remaining)" affordance —
-it is not derivable from `streams.length` alone once a filter is applied
-client-side.
+`total` counts matches across every page, not just `streams.length`. The
+dashboard uses it for the remaining count and falls back to the number of
+loaded rows when it is absent. `nextCursor` drives whether "Load more" is
+available; a response without it ends pagination even if `total` is larger
+than the loaded count. The client passes a returned cursor back unchanged.
+It does not need echoed `limit` or `offset` to paginate.
 
 ### `GET /streams/:id`
 
@@ -104,11 +114,11 @@ timestamps, also sent as strings for the same reason (consistency with the
 amount fields, and to avoid every backend integer field needing its own
 special case). `lib/format.ts`'s `formatTime` renders them.
 
-**`progress` vs `vestedh/`totalAmount`.** `progress` is a convenience the
+**`progress` vs `vested` / `totalAmount`.** `progress` is a convenience the
 backend precomputes so simple UI (e.g. a progress bar) doesn't need to do
 `vested / totalAmount` itself with `BigInt` division. It is *not* the source
 of truth for the vested amount — `vested` is. `hooks/use-accrual.ts`
-recomputes `vestedh/`withdrawable` client-side every second between fetches
+recomputes `vested` / `withdrawable` client-side every second between fetches
 (mirroring the contract's linear-vesting math in `lib/vesting.ts`) so a
 streaming balance visibly climbs without polling; `progress` is only used
 for the static bar, not for that live recomputation.
@@ -124,13 +134,16 @@ that check a `totalAmount` sent as a JSON number instead of a string surfaces
 much later as an opaque `BigInt` conversion failure inside
 `lib/format.ts`, and a missing field renders as `undefined` in the table.
 
-Two deliberate leniencies keep older backend builds working:
+The validator accepts these optional fields:
 
 - `cancelled` is only type-checked when present — `status === "cancelled"`
   already carries the same information.
-- `limit`/`offset` are only checked when present, since the frontend paginates
-  from its own counters (`hooks/use-stream-page.ts`) rather than from the
-  echoed values.
+- `total` is only checked when present, since the backend only returns it
+  with `includeTotal=true`.
+- `nextCursor` is only checked when present and must be a string. Its absence
+  means there is no continuation for the dashboard to request.
+- `limit`/`offset` are only checked when present, since the frontend follows
+  `nextCursor` (`hooks/use-stream-page.ts`) rather than the echoed values.
 
 Validation asserts, it never normalises: the payload is returned exactly as it
 arrived, so nothing downstream depends on having passed through the validator.
