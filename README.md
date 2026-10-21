@@ -379,7 +379,9 @@ The codebase follows a modular directory organization separating route declarati
 | `e2e/` | Playwright end-to-end user journey tests, synthetic wallet listeners, mock chain fixtures, and visual regression smoke tests. | `e2e/cancel-confirm.spec.ts` |
 | `docs/` | In-depth technical specifications, protocol integration guides, API contracts, and architectural documentation. | `docs/api-contract.md` |
 
-```
+### Module Map
+
+```text
 app/
   layout.tsx            root layout: theme bootstrap script, providers, header
   loading.tsx           route-level branded loading fallback
@@ -388,6 +390,9 @@ app/
   streams/[id]/page.tsx stream detail with live balance and actions
 components/
   header.tsx            brand, nav, theme toggle, wallet button
+  api-status.tsx        header indicator of backend API reachability
+  indexer-lag-banner.tsx warns when the indexer is far behind the chain
+  offline-banner.tsx    connection-loss notice that clears when back online
   theme-provider.tsx    app-wide light/dark theme state via context
   theme-toggle.tsx      header button that flips the theme
   brand-spinner.tsx     branded loading indicator (bouncing dots)
@@ -405,6 +410,8 @@ components/
   transaction-progress.tsx transaction progress stage indicator
 hooks/
   use-accrual.ts        per-second vested/withdrawable recomputation
+  use-api-health.ts     polls backend health and exposes reachability state
+  use-indexer-lag.ts    polls indexer lag in ledgers, or returns null when unknown
   use-create-stream-form.ts create-form state, validation, and transactions
   use-stream-actions.ts withdraw/cancel state and transactions
 lib/
@@ -412,21 +419,28 @@ lib/
   api.ts                backend API client
   contract.ts           build, sign, submit, confirm contract calls with stage tracking
   vesting.ts            linear vesting math, mirroring the contract
+  vesting-curve.ts      generates chart points for linear vesting and cliff jumps
+  vesting-projection.ts projects vested and withdrawable amounts at a chosen time
   format.ts             amount, address and time-span formatting
   schedule.ts           start/end/cliff/remaining text shared by every view
   csv.ts                builds the dashboard's CSV export (pure, no DOM)
   csv-download.ts       triggers the browser download for that CSV
+  stream-sort.ts        sorts loaded streams by end time, amount, or progress
+  stream-search.ts      searches loaded streams by id, address, token, or symbol
+  page-size.ts          validates and persists the dashboard page-size preference
   create-stream-validation.ts create-form field validation rules
   duration.ts           the create-form's duration shortcut: validation + calendar arithmetic
   schedule-presets.ts   named schedule presets (1 month linear, 1 year cliff, etc.)
   create-form-draft.ts  create-form draft persistence
+  last-token.ts         validates and remembers the last token for the create form
+  native-asset.ts       derives the native XLM token contract id for the network
+  token-balance.ts      reads a token balance through unsigned Soroban simulation
+  duplicate-stream.ts   builds a create-form draft with the original duration and cliff offset
   stream-actions.ts     who may cancel, and why withdrawal is blocked
   theme.ts              pure light/dark theme resolution logic
 types/
   stream.ts             API response types
 ```
-
-### Module Map
 
 | Directory | Purpose |
 | --- | --- |
@@ -452,10 +466,9 @@ The `docs/` directory holds reference documentation beyond what fits here —
 see [docs/README.md](docs/README.md) for an index of what's there and a
 one-line description of each document.
 
-Conventions for writing components and hooks are documented for AI assistants
-and new contributors in `.kiro/steering/`:
-[`component-conventions.md`](.kiro/steering/component-conventions.md) and
-[`hook-conventions.md`](.kiro/steering/hook-conventions.md).
+Conventions for writing components and hooks are documented in
+[`component-conventions.md`](docs/component-conventions.md) and
+[`hook-conventions.md`](docs/hook-conventions.md).
 
 See [CHANGELOG.md](CHANGELOG.md) for a record of what changed between
 versions of the client.
