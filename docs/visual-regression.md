@@ -1,73 +1,46 @@
-# Visual Regression Suite
+# Visual regression smoke suite
 
-This document describes the visual regression (smoke) suite for the TricklePay frontend, what it covers, how to deliberately update a snapshot, and how to review a visual diff.
+`e2e/visual-smoke.spec.ts` captures three viewport screenshots with the existing fake Freighter wallet, empty stream store, API, and Soroban RPC fixtures:
 
-## What the Suite Covers
+| Baseline | Viewport | View |
+| --- | --- | --- |
+| `dashboard-smoke-chromium-win32.png` | 1280 × 720 | Connected wallet dashboard with no streams |
+| `create-stream-smoke-chromium-win32.png` | 1280 × 720 | Empty create-stream form |
+| `create-stream-mobile-smoke-chromium-win32.png` | 375 × 667 | The same form at mobile width |
 
-The visual suite captures snapshots of key rendered views and components so that unintended visual changes are detected early. It is a smoke test, not an exhaustive visual coverage tool. It focuses on the high-value surfaces most likely to regress or to be affected by shared styling changes:
+The tracked images live in `e2e/visual-smoke.spec.ts-snapshots/`. These are viewport captures, so content below the viewport is intentionally excluded. They do not cover stream detail, validation errors, or every theme and breakpoint.
 
-- Top-level page layouts and routing outlets (e.g. landing, dashboard, and auth flows).
-- Core UI components and their variants (buttons, inputs, modals, cards, alerts, and navigation).
-- Representative states for each component, including default, hover/focus where applicable, disabled, loading, and error states.
-- Responsive breakpoints for the layouts that are covered.
-- Theme variations (light and dark) where the app supports them.
+## Baseline environment
 
-Snapshots are committed to the repository and are treated as artifacts of the codebase. A change to a snapshot is a visible change to the app and must be justified in the pull request.
+The initial images were captured on **Windows 11 x64 (build 26200)** using **Node.js 24.16.0**, the locked **Playwright 1.62.1**, and its bundled **Chromium headless shell 151.0.7922.34 (revision 1234)**. The app runs through the Next.js development server configured in `playwright.config.ts`.
 
-## Running the Suite
+The spec fixes the browser locale to `en-US`, time zone to `UTC`, color scheme to `light`, and clock to `2026-01-01T12:00:00Z`. It waits for the wallet and API to settle and hides the Next.js development overlay in screenshots. Storage is fresh for each test. No real wallet, backend, or chain is needed.
 
-Run the visual suite as part of the standard test command:
+Playwright includes the project and platform in snapshot filenames. Use this Windows environment to compare these baselines; Linux and macOS render native controls and fonts differently and require separately reviewed platform images. There is currently no visual-test CI job or pinned Docker baseline.
 
-```bash
-npm test
+## Run from a clean checkout
+
+In PowerShell on the environment above:
+
+```powershell
+npm.cmd ci
+npx.cmd playwright install chromium --only-shell
+$env:CI = "1"
+npm.cmd run test:e2e -- e2e/visual-smoke.spec.ts --project=chromium
 ```
 
-To run only the visual suite locally, use the dedicated script:
+`CI=1` ensures Playwright starts its own server with the fixture environment instead of reusing a server with different configuration. Keep port 3100 free and avoid local `.env` overrides, especially `NEXT_PUBLIC_MOCK_API=true`. `npm test` runs Vitest and does not execute these browser screenshots.
 
-```bash
-npm run test:visual
-`if
+## Update baselines deliberately
 
-A non-zero exit code means one or more snapshots differ from the committed baseline. The report artifacts (image diffs, expected images, and actual images) are written to the configured output directory so you can inspect them.
+After making an intentional UI change, use the same installation and environment:
 
-## Updating a Snapshot Deliberately
+```powershell
+npm.cmd run test:e2e -- e2e/visual-smoke.spec.ts --project=chromium --update-snapshots
+```
 
-Update a snapshot only when the visual change is intentional and reviewed. The typical workflow is:
+Review all changed PNGs in `e2e/visual-smoke.spec.ts-snapshots/`, then run the command again without `--update-snapshots` to check the comparisons. Commit the reviewed images with the UI change. A new platform creates additional files; do not rename images from another operating system to match Windows filenames.
 
-1. Make the code change that alters the rendered output.
-2. Run the visual suite and inspect the reported diffs.
-3. Confirm each diff is expected and explainable by your change.
-4. Regenerate the baselines with the update command:
+On a mismatch, Playwright writes actual, expected, and diff images under `test-results/`. Inspect those images before updating anything. Explain the intended visual change in the pull request; do not overwrite an unexplained diff just to silence a failure.
 
-   ```bash
-   npm run test:visual -- --update-snapshots
-   ```
-
-   If the suite uses a separate update script, use `npm run test:visual:update` instead.
-5. Re-run the suite without the update flag to confirm it passes against the new baselines.
-6. Commit the updated snapshot files alongside the code change that caused them.
-
-The update command rewrites the committed baseline images. Treat those files as part of the change under review, not as generated noise.
-
-## Reviewing a Visual Diff
-
-When a pull request changes a snapshot, review the diff before approving:
-
-1. Open the diff report from the test run or the committed snapshot changes in the pull request.
-2. Compare the expected image against the actual image and examine the diff overlay to locate what moved, resized, recolored, or disappeared.
-3. Confirm the change matches the intent of the code change and does not introduce unintended effects in other components.
-4. Check that the change is consistent across the covered breakpoints and themes.
-5. If anything is unexplained, request changes rather than accepting the new baseline.
-
-## Why You Must Not Update Snapshots to Silence a Failure
-
-Never regenerate a snapshot just to make a failing test pass. A failing snapshot is evidence that the rendered output changed. Overwriting the baseline without understanding the cause hides regressions, makes the suite meaningless, and ships unintended visual changes to users.
-
-If a snapshot fails unexpectedly:
-
-- Investigate the root cause before changing any baseline.
-- Check for unintended style, layout, or dependency changes.
-- Fix the code if the change was a regression.
-- Only update the snapshot when the new output is the intended result, and say so in the pull request description.
-
-A snapshot update without a corresponding, justified code change is a redflag in review and should be rejected.
+The initial baselines were generated directly through Playwright's screenshot API with the same fixtures and capture settings, without executing the test runner. A clean-checkout test run has not been performed for this change.
