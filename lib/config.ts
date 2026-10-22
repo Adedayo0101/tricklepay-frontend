@@ -34,6 +34,51 @@ const MOCK_CONTRACT_ID = "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2
 // the timeout entirely.
 const DEFAULT_API_TIMEOUT_MS = 10_000;
 
+/**
+ * Throws a configuration error if `value` is not a well-formed absolute URL, or
+ * if it uses plain http:// for a non-local host. Called once per URL variable at
+ * module load so a bad value surfaces as a startup error rather than a runtime
+ * TypeError thrown during the first request.
+ */
+function validateConfigUrl(value: string, name: string): void {
+  let parsed: URL;
+  try {
+    parsed = new URL(value);
+  } catch {
+    throw new Error(
+      `Configuration error: ${name} "${value}" is not a valid URL. ` +
+      "It must be an absolute URL (for example https://api.example.com).",
+    );
+  }
+  const { hostname, protocol } = parsed;
+  const isLocal =
+    hostname === "localhost" ||
+    hostname === "127.0.0.1" ||
+    hostname === "[::1]";
+  if (protocol === "http:" && !isLocal) {
+    throw new Error(
+      `Configuration error: ${name} "${value}" uses plain http:// for a non-local host. ` +
+      "Use https:// for non-local deployments (http:// is accepted only for localhost).",
+    );
+  }
+}
+
+function readApiUrl(): string {
+  const value = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000";
+  validateConfigUrl(value, "NEXT_PUBLIC_API_URL");
+  return value;
+}
+
+function readRpcUrl(): string {
+  const raw = process.env.NEXT_PUBLIC_RPC_URL;
+  if (raw && raw.trim() !== "") {
+    const trimmed = raw.trim();
+    validateConfigUrl(trimmed, "NEXT_PUBLIC_RPC_URL");
+    return trimmed;
+  }
+  return DEFAULT_RPC_URLS[network] ?? DEFAULT_RPC_URLS.testnet;
+}
+
 // Parsed eagerly so a typo in the variable is a startup error naming the
 // variable, not a silent fallback that quietly ignores the operator's intent.
 function readApiTimeout(): number {
@@ -52,7 +97,7 @@ function readApiTimeout(): number {
 
 export const config = {
   /** Base URL of the tricklepay-backend read API. */
-  apiUrl: process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000",
+  apiUrl: readApiUrl(),
   /**
    * Stellar network name: `"testnet"` or `"mainnet"`.
    *
@@ -64,12 +109,7 @@ export const config = {
   /** Passphrase for the selected network, used when signing transactions. */
   networkPassphrase: NETWORK_PASSPHRASES[network] ?? NETWORK_PASSPHRASES.testnet,
   /** Soroban RPC endpoint, used to submit signed transactions. */
-  rpcUrl:
-    (process.env.NEXT_PUBLIC_RPC_URL && process.env.NEXT_PUBLIC_RPC_URL.trim() !== ""
-      ? process.env.NEXT_PUBLIC_RPC_URL.trim()
-      : undefined) ??
-    DEFAULT_RPC_URLS[network] ??
-    DEFAULT_RPC_URLS.testnet,
+  rpcUrl: readRpcUrl(),
   /** Deployed stream contract id (starts with C). */
   contractId: process.env.NEXT_PUBLIC_CONTRACT_ID || (mockApi ? MOCK_CONTRACT_ID : ""),
   /** Serve fixture data instead of calling the backend (NEXT_PUBLIC_MOCK_API=true). */
