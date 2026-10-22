@@ -394,25 +394,32 @@ function Dashboard() {
         )}
       </div>
 
-      <div className="mb-8 flex items-center gap-2">
-        <label className="flex items-center gap-2 text-xs text-neutral-400">
-          <span>Sort</span>
-          <select
-            value={sort}
-            onChange={(e) => {
-              const value = e.target.value;
-              if (isStreamSortOption(value)) setSort(value);
-            }}
-            className="min-h-[44px] rounded border border-neutral-700 bg-neutral-900 px-3 py-2 text-xs text-neutral-200 focus:border-neutral-500 focus-visible:outline-none"
-          >
-            {STREAM_SORT_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <span className="text-xs text-neutral-500">(sorts only the streams currently loaded on the page)</span>
+      <div className="mb-8">
+        <div className="flex items-center gap-2">
+          <label className="flex items-center gap-2 text-xs text-neutral-400">
+            <span>Sort</span>
+            <select
+              value={sort}
+              onChange={(e) => {
+                const value = e.target.value;
+                if (isStreamSortOption(value)) setSort(value);
+              }}
+              className="min-h-[44px] rounded border border-neutral-700 bg-neutral-900 px-3 py-2 text-xs text-neutral-200 focus:border-neutral-500 focus-visible:outline-none"
+            >
+              {STREAM_SORT_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <span className="text-xs text-neutral-500">(sorts only the streams currently loaded on the page)</span>
+        </div>
+        {STREAM_SORT_OPTIONS.find((o) => o.value === sort)?.note && (
+          <p className="mt-1.5 max-w-prose text-xs text-neutral-500">
+            {STREAM_SORT_OPTIONS.find((o) => o.value === sort)!.note}
+          </p>
+        )}
       </div>
 
       <div className="mb-8 flex items-center gap-2">

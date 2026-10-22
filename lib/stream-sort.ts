@@ -9,11 +9,18 @@ import type { StreamView } from "@/types/stream";
 
 export type StreamSortOption = "default" | "end-soonest" | "amount-largest" | "progress-most-complete";
 
-export const STREAM_SORT_OPTIONS: ReadonlyArray<{ value: StreamSortOption; label: string }> = [
+export const STREAM_SORT_OPTIONS: ReadonlyArray<{ value: StreamSortOption; label: string; note?: string }> = [
   { value: "default", label: "Default order" },
   { value: "end-soonest", label: "Ending soonest" },
   { value: "amount-largest", label: "Amount: largest first" },
-  { value: "progress-most-complete", label: "Progress: most complete first" },
+  {
+    value: "progress-most-complete",
+    label: "Progress: most complete first",
+    note:
+      "Cancelled streams sort last. When a stream is cancelled the contract sets " +
+      "its total to the amount already vested, making its progress read as 100% — " +
+      "that figure reflects how much vested before cancellation, not real completion.",
+  },
 ];
 
 export function isStreamSortOption(value: string): value is StreamSortOption {
@@ -32,6 +39,12 @@ function compareAmountDesc(a: StreamView, b: StreamView): number {
 // though a real timestamp never approaches the range where Number() would
 // actually lose precision — consistent with how amounts are compared.
 function compareEndAsc(a: StreamView, b: StreamView): number {
+  // "Ending soonest" is meaningful only for streams still running or pending.
+  // Completed and cancelled streams have end times in the past, so they sort
+  // after the active ones regardless of their end time.
+  const aActive = a.status === "streaming" || a.status === "pending";
+  const bActive = b.status === "streaming" || b.status === "pending";
+  if (aActive !== bActive) return aActive ? -1 : 1;
   const diff = BigInt(a.endTime) - BigInt(b.endTime);
   return diff > 0n ? 1 : diff < 0n ? -1 : 0;
 }
@@ -39,6 +52,14 @@ function compareEndAsc(a: StreamView, b: StreamView): number {
 // Basis points (0–10000): a plain, safely-sized number, so a direct numeric
 // comparison is exact.
 function compareProgressDesc(a: StreamView, b: StreamView): number {
+  // Cancelled streams always rank after non-cancelled ones. When a stream is
+  // cancelled, the contract sets totalAmount to the already-vested amount,
+  // so progress becomes 10 000 for every cancelled stream regardless of how
+  // much actually vested — ranking them by that figure would place them above
+  // streams that are genuinely near completion.
+  const aCancelled = a.status === "cancelled";
+  const bCancelled = b.status === "cancelled";
+  if (aCancelled !== bCancelled) return aCancelled ? 1 : -1;
   return b.progress - a.progress;
 }
 
