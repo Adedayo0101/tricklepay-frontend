@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { isAbortError, listStreams, type ListStreamsParams } from "@/lib/api";
+import { MAX_PAGE_SIZE } from "@/lib/page-size";
 import type { StreamStatus, StreamView } from "@/types/stream";
 
 // Rows per request. Kept under the backend's 50-row default so a large account
@@ -126,6 +127,14 @@ export function useStreamPage(
   const [refreshWarning, setRefreshWarning] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<number | null>(null);
 
+  // Mirrors the streams state so silentRefresh callbacks can read the current
+  // row count without declaring streams as a dependency (which would recreate
+  // the callback on every render and retrigger the interval effect).
+  const streamsRef = useRef<StreamView[]>([]);
+  useEffect(() => {
+    streamsRef.current = streams;
+  }, [streams]);
+
   // Bumped whenever the query changes. A request compares the generation it
   // started under against the current one before writing, so a slow page cannot
   // append its rows to a list that has since been reset for another address.
@@ -230,10 +239,20 @@ export function useStreamPage(
   const silentRefresh = useCallback(() => {
     if (!address || (typeof document !== "undefined" && document.visibilityState === "hidden")) return;
     const gen = generation.current;
+    // Fetch enough rows to cover everything currently on screen, up to the
+    // backend's page ceiling. This way a user who has loaded 75 rows still
+    // sees 75 rows after a background refresh, rather than being silently
+    // reset to the default page size.
+    const refreshLimit = Math.min(MAX_PAGE_SIZE, Math.max(pageSize, streamsRef.current.length));
     const controller = startRequest();
-    listStreams(pageQuery(role, address, status, pageSize), { signal: controller.signal })
+    listStreams(pageQuery(role, address, status, refreshLimit), { signal: controller.signal })
       .then((page) => {
         if (generation.current !== gen) return;
+        // If loadMore ran while this request was in flight, it has appended
+        // rows beyond what we fetched. Applying a shorter list would silently
+        // drop them, so skip this refresh result; the next interval will cover
+        // the full set.
+        if (page.streams.length < streamsRef.current.length) return;
         setStreams(page.streams);
         setTotal(page.total ?? page.streams.length);
         setNextCursor(page.nextCursor ?? null);
