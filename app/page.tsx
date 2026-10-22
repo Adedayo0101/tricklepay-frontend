@@ -13,6 +13,7 @@ import { useWallet } from "@/components/wallet-provider";
 import { useNow } from "@/hooks/use-now";
 import { useStreamPage, type StreamPage } from "@/hooks/use-stream-page";
 import { DEFAULT_PAGE_SIZE, isPageSize, PAGE_SIZE_OPTIONS, readPageSize, writePageSize, type PageSize } from "@/lib/page-size";
+import { timeAgo } from "@/lib/format";
 import { takePendingNotice } from "@/lib/pending-notice";
 import { filterStreamsByAddress } from "@/lib/stream-search";
 import { isStreamSortOption, sortStreams, STREAM_SORT_OPTIONS, type StreamSortOption } from "@/lib/stream-sort";
