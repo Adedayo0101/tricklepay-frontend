@@ -26,7 +26,10 @@ export function WalletButton(): JSX.Element {
           </span>
         )}
         {/* Address badge — read-only, shows the connected account */}
-        <span className="rounded border border-neutral-700 px-3 py-1.5 font-mono text-xs text-neutral-400">
+        <span
+          data-testid="wallet-address"
+          className="rounded border border-neutral-700 px-3 py-1.5 font-mono text-xs text-neutral-400"
+        >
           {truncateAddress(wallet.address)}
         </span>
         {/* Explicit disconnect button */}
