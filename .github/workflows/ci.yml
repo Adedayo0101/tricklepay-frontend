@@ -8,11 +8,6 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    # `npm run build` fails when NEXT_PUBLIC_CONTRACT_ID is unset (see
-    # lib/build-guard.ts). CI only compiles the app, so a public testnet id is
-    # enough to exercise the production build.
-    env:
-      NEXT_PUBLIC_CONTRACT_ID: CA3D5KRYM6CB7OWQ6TWYRR3Z4T7GNZLKERYNZGGA5SOAOPIFY6YQGAXE
     steps:
       - uses: actions/checkout@v4
 
