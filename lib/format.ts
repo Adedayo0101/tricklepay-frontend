@@ -11,6 +11,7 @@ const SECONDS_PER_MINUTE = 60;
 const SECONDS_PER_HOUR = 3600;
 const SECONDS_PER_DAY = 86400;
 
+import { getCachedTokenDecimals } from "@/lib/token-decimals";
 import {
   getCachedTokenMetadata,
   KNOWN_TOKEN_METADATA,
@@ -56,7 +57,6 @@ export function formatTokenDisplay(tokenAddress: string): string {
   return truncateAddress(tokenAddress);
 }
 
-import { getCachedTokenDecimals } from "@/lib/token-decimals";
 
 /**
  * Formats a base-unit token amount as a decimal string using the token's decimals

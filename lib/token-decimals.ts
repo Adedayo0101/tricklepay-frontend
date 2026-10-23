@@ -75,6 +75,9 @@ export async function readTokenDecimals(tokenContractId: string): Promise<number
     if (!rpc.Api.isSimulationSuccess(simulation)) {
       throw new Error("Token decimals read did not complete.");
     }
+    if (!simulation.result) {
+      throw new Error("Token decimals read did not return a value.");
+    }
 
     const nativeVal = scValToNative(simulation.result.retval);
     const decimals = Number(nativeVal);

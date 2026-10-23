@@ -2,9 +2,9 @@
 // to start from now while preserving the duration and cliff offset.
 // Pure, so it can be tested without React.
 
+import { EMPTY_FORM_DRAFT } from "@/lib/create-form-draft";
 import { nowAsDatetimeLocal, addDurationToLocal } from "@/lib/duration";
 import { formatAmount } from "@/lib/format";
-import { EMPTY_FORM_DRAFT } from "@/lib/create-form-draft";
 import type { FormDraft } from "@/types/form";
 import type { StreamView } from "@/types/stream";
 

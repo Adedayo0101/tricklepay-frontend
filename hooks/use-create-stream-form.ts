@@ -13,7 +13,6 @@ import {
   wrongNetworkMessage,
 } from "@/lib/contract-messages";
 import { clearFormDraft, EMPTY_FORM_DRAFT, readFormDraft, writeFormDraft } from "@/lib/create-form-draft";
-import { clearLastToken, readLastToken, writeLastToken } from "@/lib/last-token";
 import { submitCreateStream } from "@/lib/create-stream-submission";
 import {
   amountFieldError,
@@ -26,6 +25,7 @@ import {
 } from "@/lib/create-stream-validation";
 import { addDurationToLocal, deriveDuration, durationFieldError, isDurationUnit } from "@/lib/duration";
 import { formatDuration } from "@/lib/format";
+import { clearLastToken, readLastToken, writeLastToken } from "@/lib/last-token";
 import { setPendingNotice } from "@/lib/pending-notice";
 import { applySchedulePreset, SCHEDULE_PRESETS } from "@/lib/schedule-presets";
 import { readTokenBalance } from "@/lib/token-balance";

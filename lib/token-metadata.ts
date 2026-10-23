@@ -89,6 +89,9 @@ async function simulateTokenCall(
   if (!rpc.Api.isSimulationSuccess(simulation)) {
     throw new Error(`Token ${method} read did not complete.`);
   }
+  if (!simulation.result) {
+    throw new Error(`Token ${method} read did not return a value.`);
+  }
 
   const nativeVal = scValToNative(simulation.result.retval);
   return typeof nativeVal === "string" ? nativeVal : String(nativeVal ?? "");
