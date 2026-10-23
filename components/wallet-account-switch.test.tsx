@@ -126,6 +126,24 @@ function renderApp() {
   );
 }
 
+// The truncated address is not unique on the dashboard: every stream card shows
+// its sender and recipient too. The badge is the authoritative "current
+// account" indicator, so identify it by test id instead of by its text.
+async function expectAddress(address: string) {
+  await waitFor(() =>
+    expect(screen.getByTestId("wallet-address").textContent).toBe(truncateAddress(address)),
+  );
+}
+
+// Renders the app and waits for both the restored session and the account
+// watcher. The watcher is registered from a passive effect, which can flush a
+// tick after the badge first renders.
+async function renderConnectedApp() {
+  renderApp();
+  await expectAddress(ALICE);
+  await waitFor(() => expect(watchers.size).toBe(1));
+}
+
 describe("switching wallet accounts", () => {
   beforeEach(() => {
     watchers.clear();
@@ -138,16 +156,15 @@ describe("switching wallet accounts", () => {
 
   it("starts watching for account changes once a session is restored", async () => {
     renderApp();
-    await screen.findByText(truncateAddress(ALICE));
-    expect(watchers.size).toBe(1);
+    await expectAddress(ALICE);
+    await waitFor(() => expect(watchers.size).toBe(1));
   });
 
   it("moves the address, role-based controls and stream lists to the new account", async () => {
-    renderApp();
+    await renderConnectedApp();
 
     // Alice: her address, the recipient's Withdraw control on Bob's stream,
     // and her own incoming (#101) and outgoing (#202) streams.
-    await screen.findByText(truncateAddress(ALICE));
     expect(screen.getByRole("button", { name: "Withdraw" })).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Cancel stream" })).toBeNull();
     await screen.findByText("#202");
@@ -155,8 +172,7 @@ describe("switching wallet accounts", () => {
     emitAccount(BOB);
 
     // The badge follows.
-    await screen.findByText(truncateAddress(BOB));
-    expect(screen.queryByText(truncateAddress(ALICE))).toBeNull();
+    await expectAddress(BOB);
 
     // Bob is the sender of the same stream, so he gets Cancel, not Withdraw.
     expect(screen.getByRole("button", { name: "Cancel stream" })).toBeTruthy();
@@ -173,17 +189,16 @@ describe("switching wallet accounts", () => {
         expect.anything(),
       );
     });
-    await waitFor(() => expect(screen.queryByText("#202")).toBeNull());
-    expect(screen.getByText("No incoming streams.")).toBeTruthy();
-    expect(screen.getByText("#101")).toBeTruthy();
+    expect(await screen.findByText("No incoming streams.")).toBeTruthy();
+    expect(await screen.findByText("#101")).toBeTruthy();
+    expect(screen.queryByText("#202")).toBeNull();
   });
 
   it("follows the switch without a reload or a new connection prompt", async () => {
-    renderApp();
-    await screen.findByText(truncateAddress(ALICE));
+    await renderConnectedApp();
 
     emitAccount(BOB);
-    await screen.findByText(truncateAddress(BOB));
+    await expectAddress(BOB);
 
     // The session was restored once on mount and never again: the switch came
     // from the watcher, not from remounting the provider or reconnecting.
@@ -192,22 +207,21 @@ describe("switching wallet accounts", () => {
   });
 
   it("ignores an empty address from a locked wallet", async () => {
-    renderApp();
-    await screen.findByText(truncateAddress(ALICE));
+    await renderConnectedApp();
 
     emitAccount("");
 
-    expect(screen.getByText(truncateAddress(ALICE))).toBeTruthy();
+    expect(screen.getByTestId("wallet-address").textContent).toBe(truncateAddress(ALICE));
     expect(screen.getByRole("button", { name: "Withdraw" })).toBeTruthy();
   });
 
   it("stops watching once the user disconnects", async () => {
-    renderApp();
-    await screen.findByText(truncateAddress(ALICE));
+    await renderConnectedApp();
 
     act(() => screen.getByRole("button", { name: /Disconnect wallet/ }).click());
 
     expect(watchers.size).toBe(0);
+    expect(screen.queryByTestId("wallet-address")).toBeNull();
     expect(screen.getByRole("button", { name: "Connect Wallet" })).toBeTruthy();
   });
 });
