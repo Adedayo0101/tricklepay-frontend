@@ -35,6 +35,7 @@ const createFieldsProps = {
   onApplyPreset: vi.fn(),
   rememberedToken: null,
   onClearRememberedToken: vi.fn(),
+  walletAddress: null,
   previewRate: null,
   previewDuration: null,
   feedback: null,

@@ -478,7 +478,7 @@ describe("useCreateStreamForm", () => {
       });
 
       expect(latest.errors.amount).toBeUndefined();
-      expect(latest.prepared?.amount).toBe(10_123_456n);
+      expect(latest.prepared?.totalAmount).toBe(10_123_456n);
     });
 
     it("defaults to 7 decimals with a visible notice when reading token decimals fails", async () => {
@@ -503,7 +503,7 @@ describe("useCreateStreamForm", () => {
       });
 
       expect(latest.errors.amount).toBeUndefined();
-      expect(latest.prepared?.amount).toBe(101_234_567n);
+      expect(latest.prepared?.totalAmount).toBe(101_234_567n);
     });
   });
 });
