@@ -152,8 +152,8 @@ describe("Dashboard Page", () => {
     const el = Home();
     const htmlString = renderToStaticMarkup(el);
 
-    expect(useStreamPage).toHaveBeenCalledWith("recipient", expect.any(String), "streaming");
-    expect(useStreamPage).toHaveBeenCalledWith("sender", expect.any(String), "streaming");
+    expect(useStreamPage).toHaveBeenCalledWith("recipient", expect.any(String), "streaming", 25);
+    expect(useStreamPage).toHaveBeenCalledWith("sender", expect.any(String), "streaming", 25);
     expect(htmlString).toMatch(/aria-pressed="true"[^>]*>\s*Streaming/);
     expect(htmlString).toContain('aria-label="Clear filter"');
   });
@@ -164,7 +164,7 @@ describe("Dashboard Page", () => {
 
     const htmlString = renderToStaticMarkup(Home());
 
-    expect(useStreamPage).toHaveBeenCalledWith("recipient", expect.any(String), "all");
+    expect(useStreamPage).toHaveBeenCalledWith("recipient", expect.any(String), "all", 25);
     expect(htmlString).not.toContain('aria-label="Clear filter"');
   });
 
@@ -187,7 +187,7 @@ describe("Dashboard Page", () => {
 
       expect(htmlString).toContain("Total across visible streams");
       expect(htmlString).toContain("Total:");
-      expect(htmlString).toContain("1 USDC");
+      expect(htmlString).toContain("1 XLM");
     });
 
     it("respects the active filter by recalculating total for visible streams", () => {

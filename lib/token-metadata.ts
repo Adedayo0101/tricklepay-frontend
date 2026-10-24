@@ -1,8 +1,6 @@
-import { useEffect, useState } from "react";
-
 import { config } from "@/lib/config";
 import { TRANSACTION_BASE_FEE, TX_TIMEOUT_SECONDS } from "@/lib/contract-config";
-import { isValidContractAddress } from "@/lib/validation";
+import { nativeAssetContractId } from "@/lib/native-asset";
 
 export interface TokenMetadata {
   name: string;
@@ -11,9 +9,11 @@ export interface TokenMetadata {
 
 // Known token contracts used in the app and its fixtures as fallback.
 export const KNOWN_TOKEN_METADATA: Record<string, TokenMetadata> = {
-  CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC: {
-    name: "USD Coin",
-    symbol: "USDC",
+  // Native XLM token, derived from network passphrase.
+  // This ensures the native asset displays correctly as XLM.
+  [nativeAssetContractId(config.networkPassphrase)]: {
+    name: "Stellar Lumen",
+    symbol: "XLM",
   },
 };
 
@@ -157,86 +157,4 @@ export async function readTokenMetadata(tokenContractId: string): Promise<TokenM
   } finally {
     inFlightRequests.delete(address);
   }
-}
-
-/**
- * React hook to get token metadata. Returns cached metadata or triggers simulation
- * for unknown tokens and updates reactively.
- */
-export function useTokenMetadata(tokenAddress: string): TokenMetadata | null {
-  const [metadata, setMetadata] = useState<TokenMetadata | null>(() => {
-    const candidate = tokenAddress.trim();
-    return getCachedTokenMetadata(candidate) ?? KNOWN_TOKEN_METADATA[candidate] ?? null;
-  });
-
-  useEffect(() => {
-    let cancelled = false;
-    const candidate = tokenAddress.trim();
-    if (!candidate || !isValidContractAddress(candidate)) {
-      setMetadata(null);
-      return;
-    }
-
-    const current = getCachedTokenMetadata(candidate) ?? KNOWN_TOKEN_METADATA[candidate] ?? null;
-    if (current) {
-      setMetadata(current);
-      return;
-    }
-
-    readTokenMetadata(candidate)
-      .then((meta) => {
-        if (!cancelled) setMetadata(meta);
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setMetadata(KNOWN_TOKEN_METADATA[candidate] ?? null);
-        }
-      });
-
-    const unsubscribe = subscribeTokenMetadata(() => {
-      if (!cancelled) {
-        setMetadata(getCachedTokenMetadata(candidate) ?? KNOWN_TOKEN_METADATA[candidate] ?? null);
-      }
-    });
-
-    return () => {
-      cancelled = true;
-      unsubscribe();
-    };
-  }, [tokenAddress]);
-
-  return metadata;
-}
-
-/**
- * React hook to resolve metadata for a list of tokens in the background.
- */
-export function useTokensMetadata(tokenAddresses: string[]): void {
-  const [, setTick] = useState(0);
-
-  useEffect(() => {
-    let cancelled = false;
-    const unique = Array.from(new Set(tokenAddresses.map((t) => t.trim()))).filter(
-      (t) =>
-        Boolean(t) &&
-        isValidContractAddress(t) &&
-        !getCachedTokenMetadata(t) &&
-        !KNOWN_TOKEN_METADATA[t],
-    );
-
-    for (const token of unique) {
-      readTokenMetadata(token).catch(() => {});
-    }
-
-    const unsubscribe = subscribeTokenMetadata(() => {
-      if (!cancelled) {
-        setTick((t) => t + 1);
-      }
-    });
-
-    return () => {
-      cancelled = true;
-      unsubscribe();
-    };
-  }, [tokenAddresses.join(",")]);
 }

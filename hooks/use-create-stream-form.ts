@@ -188,6 +188,9 @@ export function useCreateStreamForm(): CreateStreamForm {
     return true;
   }
 
+  const amountRef = useRef(amount);
+  amountRef.current = amount;
+
   useEffect(() => {
     if (!token || !isValidContractAddress(token)) {
       setTokenDecimals(DEFAULT_TOKEN_DECIMALS);
@@ -205,16 +208,16 @@ export function useCreateStreamForm(): CreateStreamForm {
         if (!active) return;
         setTokenDecimals(dec);
         setDecimalsNotice(null);
-        if (amount) {
-          setFieldErrors({ amount: amountFieldError(amount, dec) });
+        if (amountRef.current) {
+          setFieldErrors({ amount: amountFieldError(amountRef.current, dec) });
         }
       })
       .catch(() => {
         if (!active) return;
         setTokenDecimals(DEFAULT_TOKEN_DECIMALS);
-        setDecimalsNotice("Could not read token decimals from contract. Defaulting to 7 decimals.");
-        if (amount) {
-          setFieldErrors({ amount: amountFieldError(amount, DEFAULT_TOKEN_DECIMALS) });
+        setDecimalsNotice("Could not read decimals from token contract. Defaulting to 7 decimals.");
+        if (amountRef.current) {
+          setFieldErrors({ amount: amountFieldError(amountRef.current, DEFAULT_TOKEN_DECIMALS) });
         }
       });
 

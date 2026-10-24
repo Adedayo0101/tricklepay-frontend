@@ -1,3 +1,5 @@
+/* @vitest-environment jsdom */
+
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 // useStreamPage drives its state machine through real React hooks, which
@@ -132,22 +134,41 @@ const ADDRESS = "GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN7";
 
 // Drains the promise chain listStreams' rejection sets off (catch, then
 // finally) before the test reads the resulting state back.
-const flush = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
+const flush = async () => {
+  if (vi.isFakeTimers()) {
+    await vi.advanceTimersByTimeAsync(10);
+  } else {
+    await new Promise<void>((resolve) => setTimeout(resolve, 0));
+  }
+};
+
+beforeEach(() => {
+  vi.clearAllMocks();
+});
 
 afterEach(() => {
+  vi.clearAllMocks();
   vi.restoreAllMocks();
   harness.unmount();
 });
 
 describe("useStreamPage — load error", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it("surfaces an error and stops loading when the first page fetch fails", async () => {
     vi.mocked(listStreams).mockRejectedValue(new Error("Network unreachable"));
 
     harness.render(() => useStreamPage("sender", ADDRESS));
-    await flush();
+    await vi.advanceTimersByTimeAsync(600);
     const page = harness.render(() => useStreamPage("sender", ADDRESS));
 
-    expect(listStreams).toHaveBeenCalledTimes(1);
+    expect(listStreams).toHaveBeenCalledTimes(2);
     expect(listStreams).toHaveBeenCalledWith(
       { sender: ADDRESS, limit: PAGE_SIZE, status: "all", includeTotal: true },
       expect.objectContaining({ signal: expect.any(AbortSignal) }),
@@ -160,7 +181,7 @@ describe("useStreamPage — load error", () => {
     vi.mocked(listStreams).mockRejectedValue("the backend exploded");
 
     harness.render(() => useStreamPage("sender", ADDRESS));
-    await flush();
+    await vi.advanceTimersByTimeAsync(600);
     const page = harness.render(() => useStreamPage("sender", ADDRESS));
 
     expect(page.error).toBe("Failed to load streams");
@@ -181,7 +202,7 @@ describe("useStreamPage — load error", () => {
     vi.mocked(listStreams).mockRejectedValue(new Error("Network unreachable"));
 
     harness.render(() => useStreamPage("sender", ADDRESS));
-    await flush();
+    await vi.advanceTimersByTimeAsync(600);
     const page = harness.render(() => useStreamPage("sender", ADDRESS));
 
     expect(page.lastUpdated).toBeNull();
@@ -195,7 +216,7 @@ describe("useStreamPage — load error", () => {
     vi.mocked(listStreams).mockRejectedValue(errorWithRequestId);
 
     harness.render(() => useStreamPage("sender", ADDRESS));
-    await flush();
+    await vi.advanceTimersByTimeAsync(600);
     const page = harness.render(() => useStreamPage("sender", ADDRESS));
 
     expect(page.error).toBe("Database query failed");

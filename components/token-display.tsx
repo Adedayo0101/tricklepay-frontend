@@ -2,8 +2,8 @@
 
 import type { JSX } from "react";
 
+import { useTokenMetadata } from "@/hooks/use-token-metadata";
 import { formatTokenDisplay, truncateAddress } from "@/lib/format";
-import { useTokenMetadata } from "@/lib/token-metadata";
 
 /**
  * Token identity shown wherever a stream references a token contract.

@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
 
+import { nativeAssetContractId } from "@/lib/native-asset";
 import {
   filterStreamsByAddress,
   filterStreamsByQuery,
@@ -9,7 +10,7 @@ import {
 import { clearTokenMetadataCache, setCachedTokenMetadata } from "@/lib/token-metadata";
 import type { StreamView } from "@/types/stream";
 
-const USDC_TOKEN = "CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC";
+const XLM_TOKEN = nativeAssetContractId();
 const OTHER_TOKEN = "CBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB";
 
 function stream(overrides: Partial<StreamView> = {}): StreamView {
@@ -17,7 +18,7 @@ function stream(overrides: Partial<StreamView> = {}): StreamView {
     id: "420",
     sender: "GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN7",
     recipient: "GBBZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN7",
-    token: USDC_TOKEN,
+    token: XLM_TOKEN,
     totalAmount: "1000000000",
     withdrawn: "0",
     vested: "0",
@@ -93,15 +94,15 @@ describe("matchesStreamQuery / matchesAddressQuery", () => {
   });
 
   it("matches the token contract address or a fragment of it", () => {
-    expect(matchesStreamQuery(s, USDC_TOKEN)).toBe(true);
+    expect(matchesStreamQuery(s, XLM_TOKEN)).toBe(true);
     expect(matchesStreamQuery(s, "CDLZFC3SYJYD")).toBe(true);
     expect(matchesStreamQuery(s, "cdlzfc3syjyd")).toBe(true);
   });
 
   it("matches a known or cached token symbol case-insensitively", () => {
-    expect(matchesStreamQuery(s, "USDC")).toBe(true);
-    expect(matchesStreamQuery(s, "usdc")).toBe(true);
-    expect(matchesStreamQuery(s, "usd")).toBe(true);
+    expect(matchesStreamQuery(s, "XLM")).toBe(true);
+    expect(matchesStreamQuery(s, "xlm")).toBe(true);
+    expect(matchesStreamQuery(s, "xl")).toBe(true);
 
     const customStream = stream({ id: "99", token: OTHER_TOKEN });
     expect(matchesStreamQuery(customStream, "EURC")).toBe(false);
@@ -118,7 +119,7 @@ describe("filterStreamsByQuery / filterStreamsByAddress", () => {
       id: "101",
       sender: "GAAA...SENDER1",
       recipient: "GBBB...RECIPIENT1",
-      token: USDC_TOKEN,
+      token: XLM_TOKEN,
     }),
     stream({
       id: "202",
@@ -154,7 +155,7 @@ describe("filterStreamsByQuery / filterStreamsByAddress", () => {
   });
 
   it("filters by token symbol and token contract address", () => {
-    expect(filterStreamsByQuery(streams, "USDC").map((s) => s.id)).toEqual(["101"]);
+    expect(filterStreamsByQuery(streams, "XLM").map((s) => s.id)).toEqual(["101"]);
     expect(filterStreamsByQuery(streams, "CBBBBBBB").map((s) => s.id)).toEqual(["202", "103"]);
   });
 

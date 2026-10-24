@@ -141,8 +141,8 @@ export function deriveDuration(
   const diffMs = endDate.getTime() - startDate.getTime();
   if (diffMs <= 0) return null;
 
-  // Check if preferredUnit matches exactly
-  if (preferredUnit && isDurationUnit(preferredUnit)) {
+  // Check if preferredUnit matches exactly (for years, months, weeks)
+  if (preferredUnit && isDurationUnit(preferredUnit) && preferredUnit !== "days") {
     if (preferredUnit === "years") {
       const y = endDate.getFullYear() - startDate.getFullYear();
       if (y > 0 && addDurationToLocal(start, String(y), "years") === end) {
@@ -163,11 +163,6 @@ export function deriveDuration(
         addDurationToLocal(start, String(diffDays / 7), "weeks") === end
       ) {
         return { amount: String(diffDays / 7), unit: "weeks" };
-      }
-    } else if (preferredUnit === "days") {
-      const diffDays = Math.round(diffMs / (24 * 60 * 60 * 1000));
-      if (diffDays > 0 && addDurationToLocal(start, String(diffDays), "days") === end) {
-        return { amount: String(diffDays), unit: "days" };
       }
     }
   }
