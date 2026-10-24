@@ -3,6 +3,16 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
+// Mock the helper so the assertion never calls Asset.native().contractId()
+// inside the jsdom realm (jsdom's Uint8Array is a different constructor than
+// Node's, which the Stellar SDK rejects). The helper itself is still tested
+// for real in lib/native-asset.test.ts, which runs under Node.
+vi.mock("@/lib/native-asset", () => ({
+  nativeAssetContractId: vi.fn(() =>
+    "CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC",
+  ),
+}));
+
 import type { CreateFormRefs } from "@/hooks/use-create-stream-form";
 import { nativeAssetContractId } from "@/lib/native-asset";
 
