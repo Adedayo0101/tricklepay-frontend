@@ -42,9 +42,10 @@ export async function readTokenBalance(tokenContractId: string, holder: string):
   if (!rpc.Api.isSimulationSuccess(simulation)) {
     throw new Error("Balance read did not complete.");
   }
-  if (!simulation.result) {
+  const result = simulation.result;
+  if (!result) {
     throw new Error("Balance read did not return a value.");
   }
 
-  return BigInt(scValToNative(simulation.result.retval));
+  return BigInt(scValToNative(result.retval));
 }
