@@ -2,7 +2,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { FormDraft } from "@/types/form";
 
-import { endFieldError, isSelfRecipient, validateCreateStreamForm } from "./create-stream-validation";
+import {
+  amountFieldError,
+  endFieldError,
+  isSelfRecipient,
+  validateCreateStreamForm,
+} from "./create-stream-validation";
 
 const validDraft: FormDraft = {
   recipient: "GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN7",
@@ -101,6 +106,14 @@ describe("validateCreateStreamForm", () => {
     expect(
       validateCreateStreamForm({ ...validDraft, amount: "1.1234567890123456789" }, 18).amount,
     ).toBe("Amount cannot have more than 18 decimal places.");
+  });
+
+  it("keeps creation-only zero and maximum amount checks", () => {
+    expect(amountFieldError("0")).toBe("Amount must be greater than zero.");
+    expect(amountFieldError("922337203685.4775808")).toBe(
+      "Amount cannot exceed 922337203685.4775807.",
+    );
+    expect(amountFieldError("922337203685.4775807")).toBeUndefined();
   });
 });
 
