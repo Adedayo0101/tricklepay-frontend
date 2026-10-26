@@ -1,5 +1,3 @@
-const STROOP_DECIMALS = 7n;
-
 // Characters kept from each end of a truncated address: enough to tell
 // addresses apart at a glance while fitting cards and table cells.
 const ADDRESS_EDGE_LENGTH = 4;
