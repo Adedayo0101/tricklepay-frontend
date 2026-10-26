@@ -1,25 +1,16 @@
 import { formatAmount } from "@/lib/format";
-
-// Human decimal amounts are converted into base units using the token's decimals
-// (defaulting to 7, the Stellar standard), matching parseAmount in lib/validation.ts.
+import { parseDecimalAmount } from "@/lib/amount-parser";
 
 // Parses a human decimal amount (e.g. "12.5") into base units.
 // Throws a descriptive error for anything that is not a plain non-negative
 // decimal with at most `decimals` fractional digits.
 export function parseHumanAmount(human: string, decimals: number = 7): bigint {
-  const trimmed = human.trim();
-  if (!trimmed) throw new Error("Enter an amount.");
-  if (trimmed.startsWith("-")) throw new Error("Amount cannot be negative.");
-  if (!/^\d+(\.\d+)?$/.test(trimmed)) {
-    throw new Error("Enter a valid amount (e.g. 12.5).");
-  }
-  const [whole, frac = ""] = trimmed.split(".");
-  if (frac.length > decimals) {
-    throw new Error(`Amount cannot have more than ${decimals} decimal places.`);
-  }
-  const base = 10n ** BigInt(decimals);
-  const fracPadded = frac.padEnd(decimals, "0");
-  return BigInt(whole || "0") * base + (fracPadded ? BigInt(fracPadded) : 0n);
+  return parseDecimalAmount(human, decimals, {
+    required: "Enter an amount.",
+    negative: "Amount cannot be negative.",
+    invalid: "Enter a valid amount (e.g. 12.5).",
+    precision: (places) => `Amount cannot have more than ${places} decimal places.`,
+  });
 }
 
 // Returns the message for the first problem with a requested withdrawal
@@ -43,4 +34,3 @@ export function withdrawalAmountError(
   }
   return null;
 }
-

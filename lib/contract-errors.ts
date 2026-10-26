@@ -1,3 +1,4 @@
+
 import { config } from "@/lib/config";
 
 // Maps the numeric error codes emitted by the on-chain contract to plain-language
@@ -72,21 +73,27 @@ const CONTRACT_ERROR_RE = /Error\(Contract,\s*#(\d+)\)/;
  * #N)" of a simulation failure carries no contract id; the events do.
  */
 const ATTRIBUTED_ERROR_EVENT_RE =
-  /contract:(C[A-Z2-7]{55}),\s*topics:\[[^\]]*?Error\(Contract,\s*#(\d+)\)/g;
+  /contract:(C[A-Z2-7]{55}),\s*topics:\[[^\]]*?Error\(Contract,\s*#(\d+)\)[^\]]*\](?:,\s*data:([^\n]*))?/g;
 
 /**
- * Id of the contract that raised `code`, read from the originating (innermost)
- * matching diagnostic event in the newest-first event log, or null when the text
- * does not say.
+ * Id of the contract that originated `code`, preferring Soroban's explicit
+ * "failing with contract error" marker. If a log omits that marker, the last
+ * matching event is the oldest frame and therefore the originating contract.
  */
 function failingContractId(raw: string, code: number): string | null {
-  let matched: string | null = null;
+  let oldestMatchingContract: string | null = null;
+
   for (const event of raw.matchAll(ATTRIBUTED_ERROR_EVENT_RE)) {
-    if (parseInt(event[2], 10) === code) {
-      matched = event[1];
+    if (parseInt(event[2], 10) !== code) continue;
+
+    if (event[3]?.includes("failing with contract error")) {
+      return event[1];
     }
+
+    oldestMatchingContract = event[1];
   }
-  return matched;
+
+  return oldestMatchingContract;
 }
 
 /**
@@ -116,8 +123,13 @@ function failingContractId(raw: string, code: number): string | null {
 export function parseContractError(raw: string): string {
   const match = CONTRACT_ERROR_RE.exec(raw);
   if (!match) return GENERIC_FAILURE;
+
   const code = parseInt(match[1], 10);
   const failing = failingContractId(raw, code);
-  if (failing !== null && failing !== config.contractId) return tokenFailureMessage(code);
+
+  if (failing !== null && failing !== config.contractId) {
+    return tokenFailureMessage(code);
+  }
+
   return CONTRACT_ERROR_MESSAGES[code] ?? `${GENERIC_FAILURE} (error code ${code})`;
 }

@@ -1,3 +1,6 @@
+
+import { useEffect, useRef, useState } from "react";
+import { StrKey } from "@stellar/stellar-sdk";
 import { config } from "@/lib/config";
 import { TRANSACTION_BASE_FEE, TX_TIMEOUT_SECONDS } from "@/lib/contract-config";
 import { nativeAssetContractId } from "@/lib/native-asset";
@@ -33,6 +36,17 @@ function notifyListeners(): void {
 }
 
 /**
+ * Checks whether a string is a valid Stellar contract address.
+ */
+function isValidContractAddress(address: string): boolean {
+  try {
+    return StrKey.isValidContract(address);
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Subscribes a listener to cache updates.
  */
 export function subscribeTokenMetadata(listener: () => void): () => void {
@@ -52,7 +66,10 @@ export function getCachedTokenMetadata(tokenContractId: string): TokenMetadata |
 /**
  * Caches token metadata for the session.
  */
-export function setCachedTokenMetadata(tokenContractId: string, metadata: TokenMetadata): void {
+export function setCachedTokenMetadata(
+  tokenContractId: string,
+  metadata: TokenMetadata,
+): void {
   metadataCache.set(tokenContractId.trim(), metadata);
   notifyListeners();
 }
@@ -74,21 +91,27 @@ async function simulateTokenCall(
     await Promise.all([import("@stellar/stellar-sdk"), import("@/lib/contract-network")]);
 
   const contract = new Contract(address);
-  const tx = new TransactionBuilder(new Account(READ_ONLY_SOURCE_ACCOUNT, READ_ONLY_SEQUENCE), {
-    fee: TRANSACTION_BASE_FEE,
-    networkPassphrase: config.networkPassphrase,
-  })
+  const tx = new TransactionBuilder(
+    new Account(READ_ONLY_SOURCE_ACCOUNT, READ_ONLY_SEQUENCE),
+    {
+      fee: TRANSACTION_BASE_FEE,
+      networkPassphrase: config.networkPassphrase,
+    },
+  )
     .addOperation(contract.call(method))
     .setTimeout(TX_TIMEOUT_SECONDS)
     .build();
 
   const simulation = await server().simulateTransaction(tx);
+
   if (rpc.Api.isSimulationError(simulation)) {
     throw new Error(simulation.error);
   }
+
   if (!rpc.Api.isSimulationSuccess(simulation)) {
     throw new Error(`Token ${method} read did not complete.`);
   }
+
   if (!simulation.result) {
     throw new Error(`Token ${method} read did not return a value.`);
   }
@@ -106,8 +129,11 @@ async function simulateTokenCall(
  *
  * @throws When the contract call fails and is not in the fallback table.
  */
-export async function readTokenMetadata(tokenContractId: string): Promise<TokenMetadata> {
+export async function readTokenMetadata(
+  tokenContractId: string,
+): Promise<TokenMetadata> {
   const address = tokenContractId.trim();
+
   if (!address) {
     throw new Error("Token contract address is required.");
   }
@@ -125,36 +151,143 @@ export async function readTokenMetadata(tokenContractId: string): Promise<TokenM
   const promise = (async () => {
     try {
       const symbol = await simulateTokenCall(address, "symbol");
+
       if (!symbol) {
         throw new Error("Token did not return a valid symbol.");
       }
 
       let name = symbol;
+
       try {
         const nameVal = await simulateTokenCall(address, "name");
         if (nameVal) name = nameVal;
       } catch {
-        // SEP-41 tokens may omit name or fail name(), fallback to symbol
+        // SEP-41 tokens may omit name or fail name(), fallback to symbol.
       }
 
       const result: TokenMetadata = { symbol, name };
       metadataCache.set(address, result);
       notifyListeners();
+
       return result;
     } catch (err) {
       // The table of known tokens remains as a fallback.
       const fallback = KNOWN_TOKEN_METADATA[address];
+
       if (fallback) {
         return fallback;
       }
+
       throw err;
     }
   })();
 
   inFlightRequests.set(address, promise);
+
   try {
     return await promise;
   } finally {
     inFlightRequests.delete(address);
   }
+}
+
+/**
+ * React hook to get token metadata. Returns cached metadata or triggers simulation
+ * for unknown tokens and updates reactively.
+ */
+export function useTokenMetadata(tokenAddress: string): TokenMetadata | null {
+  const [metadata, setMetadata] = useState<TokenMetadata | null>(() => {
+    const candidate = tokenAddress.trim();
+    return (
+      getCachedTokenMetadata(candidate) ??
+      KNOWN_TOKEN_METADATA[candidate] ??
+      null
+    );
+  });
+
+  useEffect(() => {
+    let cancelled = false;
+    const candidate = tokenAddress.trim();
+
+    if (!candidate || !isValidContractAddress(candidate)) {
+      setMetadata(null);
+      return;
+    }
+
+    const current =
+      getCachedTokenMetadata(candidate) ??
+      KNOWN_TOKEN_METADATA[candidate] ??
+      null;
+
+    if (current) {
+      setMetadata(current);
+      return;
+    }
+
+    const unsubscribe = subscribeTokenMetadata(() => {
+      if (!cancelled) {
+        setMetadata(
+          getCachedTokenMetadata(candidate) ??
+            KNOWN_TOKEN_METADATA[candidate] ??
+            null,
+        );
+      }
+    });
+
+    readTokenMetadata(candidate)
+      .then((meta) => {
+        if (!cancelled) setMetadata(meta);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setMetadata(KNOWN_TOKEN_METADATA[candidate] ?? null);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+      unsubscribe();
+    };
+  }, [tokenAddress]);
+
+  return metadata;
+}
+
+/**
+ * React hook to resolve metadata for a list of tokens in the background.
+ */
+export function useTokensMetadata(tokenAddresses: string[]): void {
+  const [, setTick] = useState(0);
+  const tokenAddressesKey = tokenAddresses.join(",");
+  const tokenAddressesRef = useRef(tokenAddresses);
+  tokenAddressesRef.current = tokenAddresses;
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const unique = Array.from(
+      new Set(tokenAddressesRef.current.map((token) => token.trim())),
+    ).filter(
+      (token) =>
+        Boolean(token) &&
+        isValidContractAddress(token) &&
+        !getCachedTokenMetadata(token) &&
+        !KNOWN_TOKEN_METADATA[token],
+    );
+
+    for (const token of unique) {
+      readTokenMetadata(token).catch(() => {});
+    }
+
+    const unsubscribe = subscribeTokenMetadata(() => {
+      if (!cancelled) {
+        setTick((tick) => tick + 1);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+      unsubscribe();
+    };
+  }, [tokenAddressesKey]);
 }
