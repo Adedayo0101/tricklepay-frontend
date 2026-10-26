@@ -75,7 +75,7 @@ export async function confirm(srv: rpc.Server, hash: string): Promise<string> {
  * contract. Diagnostic events are the most reliable source; the result XDR
  * base64 string is used as a fallback for pattern matching.
  */
-function extractFailureString(result: rpc.Api.GetFailedTransactionResponse): string {
+export function extractFailureString(result: rpc.Api.GetFailedTransactionResponse): string {
   if (result.diagnosticEventsXdr && result.diagnosticEventsXdr.length > 0) {
     // Prefer an error event that names its contract, so parseContractError can
     // tell a token's error from the stream contract's; host-emitted events
@@ -119,8 +119,9 @@ function findContractErrorToken(event: xdr.DiagnosticEvent): string | null {
       if (!contractId) return token;
       return `contract:${StrKey.encodeContract(Buffer.from(contractId as unknown as Uint8Array))}, topics:[error, ${token}]`;
     }
-  } catch {
+  } catch (error) {
     // XDR traversal failed — the event shape was unexpected, skip it.
+    console.debug("Unable to inspect a diagnostic event for a contract error", error);
   }
   return null;
 }
