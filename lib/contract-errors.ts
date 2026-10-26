@@ -72,17 +72,21 @@ const CONTRACT_ERROR_RE = /Error\(Contract,\s*#(\d+)\)/;
  * #N)" of a simulation failure carries no contract id; the events do.
  */
 const ATTRIBUTED_ERROR_EVENT_RE =
-  /contract:(C[A-Z2-7]{55}),\s*topics:\[[^\]]*?Error\(Contract,\s*#(\d+)\)/g;
+  /contract:(C[A-Z2-7]{55}),\s*topics:\[[^\]]*?Error\(Contract,\s*#(\d+)\)[^\]]*\](?:,\s*data:([^\n]*))?/g;
 
 /**
- * Id of the contract that raised `code`, read from the first (newest) matching
- * diagnostic event, or null when the text does not say.
+ * Id of the contract that originated `code`, preferring Soroban's explicit
+ * "failing with contract error" marker. If a log omits that marker, the last
+ * matching event is the oldest frame and therefore the originating contract.
  */
 function failingContractId(raw: string, code: number): string | null {
+  let oldestMatchingContract: string | null = null;
   for (const event of raw.matchAll(ATTRIBUTED_ERROR_EVENT_RE)) {
-    if (parseInt(event[2], 10) === code) return event[1];
+    if (parseInt(event[2], 10) !== code) continue;
+    if (event[3]?.includes("failing with contract error")) return event[1];
+    oldestMatchingContract = event[1];
   }
-  return null;
+  return oldestMatchingContract;
 }
 
 /**
