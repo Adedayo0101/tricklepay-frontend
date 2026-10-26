@@ -132,22 +132,41 @@ const ADDRESS = "GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN7";
 
 // Drains the promise chain listStreams' rejection sets off (catch, then
 // finally) before the test reads the resulting state back.
-const flush = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
+const flush = async () => {
+  // Let the request handlers and their finally callbacks settle without using
+  // a timer that would need advancing (or hang) under fake timers.
+  await Promise.resolve();
+  await Promise.resolve();
+  await Promise.resolve();
+  await Promise.resolve();
+  await Promise.resolve();
+  await Promise.resolve();
+  await Promise.resolve();
+  await Promise.resolve();
+  await Promise.resolve();
+  await Promise.resolve();
+};
 
 afterEach(() => {
+  vi.clearAllMocks();
   vi.restoreAllMocks();
   harness.unmount();
+  vi.useRealTimers();
+  vi.unstubAllGlobals();
 });
 
 describe("useStreamPage — load error", () => {
   it("surfaces an error and stops loading when the first page fetch fails", async () => {
+    vi.useFakeTimers();
     vi.mocked(listStreams).mockRejectedValue(new Error("Network unreachable"));
 
     harness.render(() => useStreamPage("sender", ADDRESS));
     await flush();
+    await vi.advanceTimersByTimeAsync(500);
+    await flush();
     const page = harness.render(() => useStreamPage("sender", ADDRESS));
 
-    expect(listStreams).toHaveBeenCalledTimes(1);
+    expect(listStreams).toHaveBeenCalledTimes(2);
     expect(listStreams).toHaveBeenCalledWith(
       { sender: ADDRESS, limit: PAGE_SIZE, status: "all", includeTotal: true },
       expect.objectContaining({ signal: expect.any(AbortSignal) }),
@@ -157,9 +176,12 @@ describe("useStreamPage — load error", () => {
   });
 
   it("falls back to a generic message when the failure is not an Error", async () => {
+    vi.useFakeTimers();
     vi.mocked(listStreams).mockRejectedValue("the backend exploded");
 
     harness.render(() => useStreamPage("sender", ADDRESS));
+    await flush();
+    await vi.advanceTimersByTimeAsync(500);
     await flush();
     const page = harness.render(() => useStreamPage("sender", ADDRESS));
 
@@ -178,9 +200,12 @@ describe("useStreamPage — load error", () => {
   });
 
   it("leaves lastUpdated null when the only fetch so far has failed", async () => {
+    vi.useFakeTimers();
     vi.mocked(listStreams).mockRejectedValue(new Error("Network unreachable"));
 
     harness.render(() => useStreamPage("sender", ADDRESS));
+    await flush();
+    await vi.advanceTimersByTimeAsync(500);
     await flush();
     const page = harness.render(() => useStreamPage("sender", ADDRESS));
 
@@ -188,6 +213,7 @@ describe("useStreamPage — load error", () => {
   });
 
   it("surfaces requestId when the API error carries a requestId", async () => {
+    vi.useFakeTimers();
     const errorWithRequestId = Object.assign(new Error("Database query failed"), {
       requestId: "req-fail-456",
       code: "DB_ERROR",
@@ -196,10 +222,31 @@ describe("useStreamPage — load error", () => {
 
     harness.render(() => useStreamPage("sender", ADDRESS));
     await flush();
+    await vi.advanceTimersByTimeAsync(500);
+    await flush();
     const page = harness.render(() => useStreamPage("sender", ADDRESS));
 
     expect(page.error).toBe("Database query failed");
     expect(page.requestId).toBe("req-fail-456");
+  });
+
+  it("recovers when the first page retry succeeds", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(Date.UTC(2026, 0, 1, 12, 0, 0));
+    vi.mocked(listStreams)
+      .mockRejectedValueOnce(new Error("Temporary failure"))
+      .mockResolvedValueOnce({ streams: [], total: 0, limit: PAGE_SIZE, offset: 0 });
+
+    harness.render(() => useStreamPage("sender", ADDRESS));
+    await flush();
+    await vi.advanceTimersByTimeAsync(500);
+    await flush();
+    const page = harness.render(() => useStreamPage("sender", ADDRESS));
+
+    expect(listStreams).toHaveBeenCalledTimes(2);
+    expect(page.error).toBeNull();
+    expect(page.loading).toBe(false);
+    expect(page.lastUpdated).toBe(Date.UTC(2026, 0, 1, 12, 0, 0) + 500);
   });
 });
 
@@ -253,10 +300,15 @@ describe("useStreamPage — lastUpdated", () => {
 describe("useStreamPage — background refresh failure threshold and reset", () => {
   beforeEach(() => {
     vi.useFakeTimers();
-  });
-
-  afterEach(() => {
-    vi.useRealTimers();
+    vi.stubGlobal("window", {
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    });
+    vi.stubGlobal("document", {
+      visibilityState: "visible",
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    });
   });
 
   it("warns after reaching consecutive background refresh failure threshold and clears on successful refresh", async () => {

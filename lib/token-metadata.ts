@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { config } from "@/lib/config";
 import { TRANSACTION_BASE_FEE, TX_TIMEOUT_SECONDS } from "@/lib/contract-config";
@@ -213,10 +213,13 @@ export function useTokenMetadata(tokenAddress: string): TokenMetadata | null {
  */
 export function useTokensMetadata(tokenAddresses: string[]): void {
   const [, setTick] = useState(0);
+  const tokenAddressesKey = tokenAddresses.join(",");
+  const tokenAddressesRef = useRef(tokenAddresses);
+  tokenAddressesRef.current = tokenAddresses;
 
   useEffect(() => {
     let cancelled = false;
-    const unique = Array.from(new Set(tokenAddresses.map((t) => t.trim()))).filter(
+    const unique = Array.from(new Set(tokenAddressesRef.current.map((t) => t.trim()))).filter(
       (t) =>
         Boolean(t) &&
         isValidContractAddress(t) &&
@@ -238,5 +241,5 @@ export function useTokensMetadata(tokenAddresses: string[]): void {
       cancelled = true;
       unsubscribe();
     };
-  }, [tokenAddresses.join(",")]);
+  }, [tokenAddressesKey]);
 }

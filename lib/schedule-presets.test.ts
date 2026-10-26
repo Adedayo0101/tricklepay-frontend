@@ -3,7 +3,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   applySchedulePreset,
   SCHEDULE_PRESETS,
-  type SchedulePreset,
 } from "./schedule-presets";
 
 describe("SCHEDULE_PRESETS", () => {

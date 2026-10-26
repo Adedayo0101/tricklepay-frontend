@@ -162,6 +162,8 @@ export function useCreateStreamForm(): CreateStreamForm {
   };
 
   const { recipient, token, amount, start, end, cliff, durationAmount, durationUnit } = values;
+  const amountRef = useRef(amount);
+  amountRef.current = amount;
 
   function setFieldErrors(next: CreateFormErrors) {
     setErrors((prev) => ({ ...prev, ...next }));
@@ -205,16 +207,18 @@ export function useCreateStreamForm(): CreateStreamForm {
         if (!active) return;
         setTokenDecimals(dec);
         setDecimalsNotice(null);
-        if (amount) {
-          setFieldErrors({ amount: amountFieldError(amount, dec) });
+        const currentAmount = amountRef.current;
+        if (currentAmount) {
+          setFieldErrors({ amount: amountFieldError(currentAmount, dec) });
         }
       })
       .catch(() => {
         if (!active) return;
         setTokenDecimals(DEFAULT_TOKEN_DECIMALS);
         setDecimalsNotice("Could not read token decimals from contract. Defaulting to 7 decimals.");
-        if (amount) {
-          setFieldErrors({ amount: amountFieldError(amount, DEFAULT_TOKEN_DECIMALS) });
+        const currentAmount = amountRef.current;
+        if (currentAmount) {
+          setFieldErrors({ amount: amountFieldError(currentAmount, DEFAULT_TOKEN_DECIMALS) });
         }
       });
 
