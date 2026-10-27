@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: TricklePay Community & Support
+    url: https://github.com/TricklePay/tricklepay-frontend/discussions
+    about: Ask questions, discuss architecture, and get community help.
+  - name: Stellar Developer Discord
+    url: https://discord.gg/stellardev
+    about: Official Stellar developer community discussion and support.
