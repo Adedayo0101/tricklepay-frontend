@@ -1,20 +1,33 @@
-```tsx
+/* @vitest-environment jsdom */
+
+import { fireEvent, render, screen } from "@testing-library/react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { useWallet } from "@/components/wallet-provider";
 import { useStreamPage } from "@/hooks/use-stream-page";
+import { streamsToCsv } from "@/lib/csv";
+import { downloadCsv } from "@/lib/csv-download";
 import { DEFAULT_PAGE_SIZE } from "@/lib/page-size";
 import type { StreamView } from "@/types/stream";
 
 import Home from "./page";
 
+vi.mock("@/lib/csv-download", () => ({
+  downloadCsv: vi.fn(),
+}));
+
 const searchParamsRef = {
   current: new URLSearchParams(),
 };
 
+const replaceMock = vi.fn((url: string) => {
+  const query = url.includes("?") ? url.split("?")[1] : url;
+  searchParamsRef.current = new URLSearchParams(query);
+});
+
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ replace: vi.fn() }),
+  useRouter: () => ({ replace: replaceMock }),
   useSearchParams: () => searchParamsRef.current,
 }));
 
@@ -327,5 +340,152 @@ describe("Dashboard Page", () => {
       expect(htmlString).toContain("Retry");
     });
   });
+
+  describe("Export CSV (#504)", () => {
+    it("renders the export button with loaded rows tooltip and accessible label", () => {
+      mockConnectedWithData();
+      render(Home());
+
+      const exportButtons = screen.getAllByRole("button", { name: /export loaded/i });
+      expect(exportButtons.length).toBeGreaterThan(0);
+      for (const button of exportButtons) {
+        expect(button.getAttribute("title")).toBe("Exports loaded rows");
+        expect(button.textContent).toContain("Export CSV");
+      }
+    });
+
+    it("searches, sorts, exports and compares the CSV with the visible list in order", () => {
+      const stream1: StreamView = {
+        id: "stream-1",
+        sender: "GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN7",
+        recipient: "GBBBI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN7",
+        token: "CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC",
+        totalAmount: "10000000",
+        withdrawn: "0",
+        vested: "0",
+        withdrawable: "0",
+        locked: "10000000",
+        startTime: "1000",
+        endTime: "2000",
+        cliffTime: "1000",
+        cancelled: false,
+        status: "streaming",
+        progress: 0,
+      };
+
+      const stream2FilteredOut: StreamView = {
+        id: "stream-2",
+        sender: "GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN7",
+        recipient: "GCCC9999999999999999999999999999999999999999999999999999",
+        token: "CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC",
+        totalAmount: "50000000",
+        withdrawn: "0",
+        vested: "0",
+        withdrawable: "0",
+        locked: "50000000",
+        startTime: "1000",
+        endTime: "3000",
+        cliffTime: "1000",
+        cancelled: false,
+        status: "streaming",
+        progress: 0,
+      };
+
+      const stream3: StreamView = {
+        id: "stream-3",
+        sender: "GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN7",
+        recipient: "GBBBI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN7",
+        token: "CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC",
+        totalAmount: "30000000",
+        withdrawn: "0",
+        vested: "0",
+        withdrawable: "0",
+        locked: "30000000",
+        startTime: "1000",
+        endTime: "4000",
+        cliffTime: "1000",
+        cancelled: false,
+        status: "streaming",
+        progress: 0,
+      };
+
+      vi.mocked(useWallet).mockReturnValue({
+        address: "GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN7",
+        network: "testnet",
+        connecting: false,
+        error: null,
+        connect: vi.fn(),
+        disconnect: vi.fn(),
+      });
+
+      vi.mocked(useStreamPage).mockReturnValue({
+        streams: [stream1, stream2FilteredOut, stream3],
+        total: 3,
+        loading: false,
+        loadingMore: false,
+        hasMore: false,
+        error: null,
+        requestId: null,
+        consecutiveRefreshFailures: 0,
+        refreshWarning: null,
+        refresh: vi.fn(),
+        loadMore: vi.fn(),
+        lastUpdated: null,
+      });
+
+      const { rerender } = render(Home());
+
+      // 1. Search for recipient "GBBBI" (matches stream1 and stream3, filters out stream2)
+      const searchInput = screen.getByPlaceholderText(
+        "Search by stream ID, token, or address…",
+      );
+      fireEvent.change(searchInput, { target: { value: "GBBBI" } });
+
+      // 2. Sort by amount largest first (stream3 with 30 XLM should precede stream1 with 10 XLM)
+      const sortSelect = screen.getByLabelText(/^Sort/i);
+      fireEvent.change(sortSelect, { target: { value: "amount-largest" } });
+      rerender(Home());
+
+      // 3. Click the outgoing export button
+      const exportOutgoingBtn = screen.getByRole("button", {
+        name: "Export loaded outgoing streams as CSV",
+      });
+      fireEvent.click(exportOutgoingBtn);
+
+      // 4. Verify downloadCsv was called with exact visible rows in sorted order
+      expect(downloadCsv).toHaveBeenCalledTimes(1);
+      const [filename, exportedCsv] = vi.mocked(downloadCsv).mock.calls[0];
+
+      expect(filename).toBe("tricklepay-outgoing-streams.csv");
+
+      const expectedCsv = streamsToCsv([stream3, stream1]);
+      expect(exportedCsv).toBe(expectedCsv);
+
+      // Filtered-out stream is excluded
+      expect(exportedCsv).not.toContain("stream-2");
+      expect(exportedCsv).not.toContain("GCCC9999");
+
+      // Preserves sorted order: stream-3 appears before stream-1
+      const stream1Index = exportedCsv.indexOf("stream-1");
+      const stream3Index = exportedCsv.indexOf("stream-3");
+      expect(stream3Index).toBeGreaterThan(-1);
+      expect(stream1Index).toBeGreaterThan(-1);
+      expect(stream3Index).toBeLessThan(stream1Index);
+    });
+
+    it("disables the export button when visible rows is empty", () => {
+      mockConnectedWithData();
+      render(Home());
+
+      const searchInput = screen.getByPlaceholderText(
+        "Search by stream ID, token, or address…",
+      );
+      fireEvent.change(searchInput, { target: { value: "NONEXISTENT_STREAM_QUERY" } });
+
+      const exportButtons = screen.getAllByRole("button", { name: /export loaded/i });
+      for (const button of exportButtons) {
+        expect((button as HTMLButtonElement).disabled).toBe(true);
+      }
+    });
+  });
 });
-```
