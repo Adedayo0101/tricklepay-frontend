@@ -291,7 +291,7 @@ export function useCreateStreamForm(): CreateStreamForm {
 
         setTokenDecimals(DEFAULT_TOKEN_DECIMALS);
         setDecimalsNotice(
-          "Could not read token decimals from contract. Defaulting to 7 decimals.",
+          "Could not read decimals from token contract. Defaulting to 7 decimals.",
         );
 
         const currentAmount = amountRef.current;

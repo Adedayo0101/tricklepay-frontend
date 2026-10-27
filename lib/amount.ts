@@ -1,5 +1,5 @@
-import { formatAmount } from "@/lib/format";
 import { parseDecimalAmount } from "@/lib/amount-parser";
+import { formatAmount } from "@/lib/format";
 
 // Parses a human decimal amount (e.g. "12.5") into base units.
 // Throws a descriptive error for anything that is not a plain non-negative

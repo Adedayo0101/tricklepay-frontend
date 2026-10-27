@@ -16,13 +16,20 @@ const DEFAULT_RPC_URLS: Record<"testnet" | "mainnet", string> = {
   mainnet: "https://mainnet.sorobanrpc.com",
 };
 
-const network = process.env.NEXT_PUBLIC_NETWORK ?? "testnet";
-if (network !== "testnet" && network !== "mainnet") {
-  throw new Error(
-    `Configuration error: NEXT_PUBLIC_NETWORK "${network}" is not supported. ` +
-      'Accepted values are "testnet" and "mainnet".',
-  );
+type SupportedNetwork = "testnet" | "mainnet";
+
+function readNetwork(): SupportedNetwork {
+  const raw = process.env.NEXT_PUBLIC_NETWORK ?? "testnet";
+  if (raw !== "testnet" && raw !== "mainnet") {
+    throw new Error(
+      `Configuration error: NEXT_PUBLIC_NETWORK "${raw}" is not supported. ` +
+        'Accepted values are "testnet" and "mainnet".',
+    );
+  }
+  return raw;
 }
+
+const network = readNetwork();
 
 // Mock mode serves fixture data from lib/mock-api.ts instead of calling the
 // backend, for interface work without the API or a database running.
