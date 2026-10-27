@@ -6,17 +6,30 @@
 
 import { StrKey } from "@stellar/stellar-sdk";
 
-const NETWORK_PASSPHRASES: Record<string, string> = {
+const NETWORK_PASSPHRASES: Record<"testnet" | "mainnet", string> = {
   testnet: "Test SDF Network ; September 2015",
   mainnet: "Public Global Stellar Network ; September 2015",
 };
 
-const DEFAULT_RPC_URLS: Record<string, string> = {
+const DEFAULT_RPC_URLS: Record<"testnet" | "mainnet", string> = {
   testnet: "https://soroban-testnet.stellar.org",
   mainnet: "https://mainnet.sorobanrpc.com",
 };
 
-const network = process.env.NEXT_PUBLIC_NETWORK ?? "testnet";
+type SupportedNetwork = "testnet" | "mainnet";
+
+function readNetwork(): SupportedNetwork {
+  const raw = process.env.NEXT_PUBLIC_NETWORK ?? "testnet";
+  if (raw !== "testnet" && raw !== "mainnet") {
+    throw new Error(
+      `Configuration error: NEXT_PUBLIC_NETWORK "${raw}" is not supported. ` +
+        'Accepted values are "testnet" and "mainnet".',
+    );
+  }
+  return raw;
+}
+
+const network = readNetwork();
 
 // Mock mode serves fixture data from lib/mock-api.ts instead of calling the
 // backend, for interface work without the API or a database running.
@@ -76,7 +89,7 @@ function readRpcUrl(): string {
     validateConfigUrl(trimmed, "NEXT_PUBLIC_RPC_URL");
     return trimmed;
   }
-  return DEFAULT_RPC_URLS[network] ?? DEFAULT_RPC_URLS.testnet;
+  return DEFAULT_RPC_URLS[network];
 }
 
 // Parsed eagerly so a typo in the variable is a startup error naming the
@@ -107,7 +120,7 @@ export const config = {
    */
   network,
   /** Passphrase for the selected network, used when signing transactions. */
-  networkPassphrase: NETWORK_PASSPHRASES[network] ?? NETWORK_PASSPHRASES.testnet,
+  networkPassphrase: NETWORK_PASSPHRASES[network],
   /** Soroban RPC endpoint, used to submit signed transactions. */
   rpcUrl: readRpcUrl(),
   /** Deployed stream contract id (starts with C). */

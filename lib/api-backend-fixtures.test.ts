@@ -59,7 +59,7 @@ describe("API client against recorded backend fixtures", () => {
       });
 
       await expect(listStreams({ sender: "invalid-query" })).rejects.toThrow(
-        "Failed to load streams (400)",
+        "Bad Request",
       );
     });
 
@@ -83,7 +83,7 @@ describe("API client against recorded backend fixtures", () => {
         json: async () => error429,
       });
 
-      await expect(listStreams({})).rejects.toThrow("Failed to load streams (429)");
+      await expect(listStreams({})).rejects.toThrow("Too Many Requests");
     });
   });
 });

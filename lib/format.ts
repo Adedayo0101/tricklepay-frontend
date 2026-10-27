@@ -1,4 +1,11 @@
-const STROOP_DECIMALS = 7n;
+import { getCachedTokenDecimals } from "@/lib/token-decimals";
+import {
+  getCachedTokenMetadata,
+  KNOWN_TOKEN_METADATA,
+  type TokenMetadata,
+} from "@/lib/token-metadata";
+
+export type { TokenMetadata };
 
 // Characters kept from each end of a truncated address: enough to tell
 // addresses apart at a glance while fitting cards and table cells.
@@ -10,15 +17,6 @@ const MS_PER_SECOND = 1000;
 const SECONDS_PER_MINUTE = 60;
 const SECONDS_PER_HOUR = 3600;
 const SECONDS_PER_DAY = 86400;
-
-import { getCachedTokenDecimals } from "@/lib/token-decimals";
-import {
-  getCachedTokenMetadata,
-  KNOWN_TOKEN_METADATA,
-  type TokenMetadata,
-} from "@/lib/token-metadata";
-
-export type { TokenMetadata };
 
 /**
  * Resolves token metadata by contract address.

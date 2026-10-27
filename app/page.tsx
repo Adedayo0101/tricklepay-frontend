@@ -127,11 +127,12 @@ function StreamSection({
             onClick={() =>
               downloadCsv(
                 `tricklepay-${title.toLowerCase()}-streams.csv`,
-                streamsToCsv(page.streams),
+                streamsToCsv(visible),
               )
             }
-            disabled={page.streams.length === 0}
-            aria-label={`Export ${title.toLowerCase()} streams as CSV`}
+            disabled={visible.length === 0}
+            aria-label={`Export loaded ${title.toLowerCase()} streams as CSV`}
+            title="Exports loaded rows"
             className="inline-flex items-center justify-center min-h-[44px] gap-1 rounded border border-neutral-800 px-3 py-2 text-xs text-neutral-500 hover:border-neutral-600 hover:text-neutral-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-400 focus-visible:ring-offset-1 disabled:opacity-40"
           >
             {/* download icon */}

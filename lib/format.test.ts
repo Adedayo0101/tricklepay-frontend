@@ -14,6 +14,7 @@ import {
   timeRemaining,
   truncateAddress,
 } from "@/lib/format";
+import { nativeAssetContractId } from "@/lib/native-asset";
 import { clearTokenMetadataCache, setCachedTokenMetadata } from "@/lib/token-metadata";
 
 describe("formatAmount", () => {
@@ -143,10 +144,10 @@ describe("truncateAddress", () => {
 });
 
 describe("formatTokenDisplay", () => {
-  it("returns the symbol for a known token contract", () => {
+  it("returns the symbol for the native asset contract", () => {
     expect(
-      formatTokenDisplay("CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC"),
-    ).toBe("USDC");
+      formatTokenDisplay(nativeAssetContractId()),
+    ).toBe("XLM");
   });
 
   it("returns the symbol for a dynamically cached token contract", () => {
@@ -165,10 +166,10 @@ describe("formatTokenDisplay", () => {
 });
 
 describe("formatTokenAmount", () => {
-  const USDC_CONTRACT = "CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC";
+  const NATIVE_CONTRACT = nativeAssetContractId();
 
-  it("appends the symbol for a known token contract", () => {
-    expect(formatTokenAmount("12500000", USDC_CONTRACT)).toBe("1.25 USDC");
+  it("appends the symbol for the native asset contract", () => {
+    expect(formatTokenAmount("12500000", NATIVE_CONTRACT)).toBe("1.25 XLM");
   });
 
   it("appends the symbol for a dynamically cached token contract", () => {
@@ -187,10 +188,10 @@ describe("formatTokenAmount", () => {
 });
 
 describe("formatTokenRate", () => {
-  const USDC_CONTRACT = "CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC";
+  const NATIVE_CONTRACT = nativeAssetContractId();
 
-  it("uses the symbol in a known-token rate", () => {
-    expect(formatTokenRate("12500000", USDC_CONTRACT)).toBe("1.25 USDC/day");
+  it("uses the symbol in a native-token rate", () => {
+    expect(formatTokenRate("12500000", NATIVE_CONTRACT)).toBe("1.25 XLM/day");
   });
 
   it("uses the symbol for a dynamically cached token contract", () => {

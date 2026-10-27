@@ -1,5 +1,7 @@
 import { StrKey } from "@stellar/stellar-sdk";
 
+import { parseDecimalAmount } from "@/lib/amount-parser";
+
 /**
  * A Stellar address is valid if it is a public key (G...) or a contract (C...).
  */
@@ -44,28 +46,12 @@ export const MAX_HUMAN_AMOUNT = "922337203685.4775807";
  * multiple decimal points, and amounts with more than `decimals` decimal places.
  */
 export function parseAmount(human: string, decimals: number = 7): bigint {
-  const trimmed = human.trim();
-
-  if (!trimmed) {
-    throw new Error("Amount is required.");
-  }
-
-  // Reject scientific notation, negatives, multiple dots, and anything else
-  // that isn't a plain non-negative decimal.
-  if (!/^\d+(\.\d+)?$/.test(trimmed)) {
-    throw new Error("Amount must be a positive number (e.g. 100 or 1.5).");
-  }
-
-  const [whole, frac = ""] = trimmed.split(".");
-
-  // Reject more decimal places than allowed explicitly rather than silently truncating.
-  if (frac.length > decimals) {
-    throw new Error(`Amount cannot have more than ${decimals} decimal places.`);
-  }
-
-  const fracPadded = frac.padEnd(decimals, "0");
-  const base = 10n ** BigInt(decimals);
-  const result = BigInt(whole) * base + (fracPadded ? BigInt(fracPadded) : 0n);
+  const result = parseDecimalAmount(human, decimals, {
+    required: "Amount is required.",
+    negative: "Amount must be a positive number (e.g. 100 or 1.5).",
+    invalid: "Amount must be a positive number (e.g. 100 or 1.5).",
+    precision: (places) => `Amount cannot have more than ${places} decimal places.`,
+  });
 
   if (result <= 0n) {
     throw new Error("Amount must be greater than zero.");

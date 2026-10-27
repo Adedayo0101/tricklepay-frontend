@@ -111,6 +111,8 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+        <meta name="theme-color" content="#0a0a0a" media="(prefers-color-scheme: dark)" />
+        <meta name="theme-color" content="#fafafa" media="(prefers-color-scheme: light)" />
       </head>
       <body className="min-h-screen bg-neutral-950 text-neutral-100 antialiased">
         {/* Shown only when JavaScript is disabled. The app requires JS for
