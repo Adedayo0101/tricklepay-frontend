@@ -27,6 +27,7 @@ vi.mock("@/lib/token-decimals", () => ({
   getCachedTokenDecimals: getCachedTokenDecimalsMock,
   setCachedTokenDecimals: vi.fn(),
   clearTokenDecimalsCache: vi.fn(),
+  DEFAULT_TOKEN_DECIMALS: 7,
 }));
 
 import { useWallet } from "@/components/wallet-provider";

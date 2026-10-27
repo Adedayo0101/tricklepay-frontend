@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from "react";
 
+import { useEffect, useRef, useState } from "react";
+import { StrKey } from "@stellar/stellar-sdk";
 import { config } from "@/lib/config";
 import { TRANSACTION_BASE_FEE, TX_TIMEOUT_SECONDS } from "@/lib/contract-config";
-import { isValidContractAddress } from "@/lib/validation";
+import { nativeAssetContractId } from "@/lib/native-asset";
 
 export interface TokenMetadata {
   name: string;
@@ -11,9 +12,11 @@ export interface TokenMetadata {
 
 // Known token contracts used in the app and its fixtures as fallback.
 export const KNOWN_TOKEN_METADATA: Record<string, TokenMetadata> = {
-  CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC: {
-    name: "USD Coin",
-    symbol: "USDC",
+  // Native XLM token, derived from network passphrase.
+  // This ensures the native asset displays correctly as XLM.
+  [nativeAssetContractId(config.networkPassphrase)]: {
+    name: "Stellar Lumen",
+    symbol: "XLM",
   },
 };
 
@@ -29,6 +32,17 @@ const listeners = new Set<() => void>();
 function notifyListeners(): void {
   for (const listener of listeners) {
     listener();
+  }
+}
+
+/**
+ * Checks whether a string is a valid Stellar contract address.
+ */
+function isValidContractAddress(address: string): boolean {
+  try {
+    return StrKey.isValidContract(address);
+  } catch {
+    return false;
   }
 }
 
@@ -52,7 +66,10 @@ export function getCachedTokenMetadata(tokenContractId: string): TokenMetadata |
 /**
  * Caches token metadata for the session.
  */
-export function setCachedTokenMetadata(tokenContractId: string, metadata: TokenMetadata): void {
+export function setCachedTokenMetadata(
+  tokenContractId: string,
+  metadata: TokenMetadata,
+): void {
   metadataCache.set(tokenContractId.trim(), metadata);
   notifyListeners();
 }
@@ -74,21 +91,27 @@ async function simulateTokenCall(
     await Promise.all([import("@stellar/stellar-sdk"), import("@/lib/contract-network")]);
 
   const contract = new Contract(address);
-  const tx = new TransactionBuilder(new Account(READ_ONLY_SOURCE_ACCOUNT, READ_ONLY_SEQUENCE), {
-    fee: TRANSACTION_BASE_FEE,
-    networkPassphrase: config.networkPassphrase,
-  })
+  const tx = new TransactionBuilder(
+    new Account(READ_ONLY_SOURCE_ACCOUNT, READ_ONLY_SEQUENCE),
+    {
+      fee: TRANSACTION_BASE_FEE,
+      networkPassphrase: config.networkPassphrase,
+    },
+  )
     .addOperation(contract.call(method))
     .setTimeout(TX_TIMEOUT_SECONDS)
     .build();
 
   const simulation = await server().simulateTransaction(tx);
+
   if (rpc.Api.isSimulationError(simulation)) {
     throw new Error(simulation.error);
   }
+
   if (!rpc.Api.isSimulationSuccess(simulation)) {
     throw new Error(`Token ${method} read did not complete.`);
   }
+
   if (!simulation.result) {
     throw new Error(`Token ${method} read did not return a value.`);
   }
@@ -106,8 +129,11 @@ async function simulateTokenCall(
  *
  * @throws When the contract call fails and is not in the fallback table.
  */
-export async function readTokenMetadata(tokenContractId: string): Promise<TokenMetadata> {
+export async function readTokenMetadata(
+  tokenContractId: string,
+): Promise<TokenMetadata> {
   const address = tokenContractId.trim();
+
   if (!address) {
     throw new Error("Token contract address is required.");
   }
@@ -125,33 +151,39 @@ export async function readTokenMetadata(tokenContractId: string): Promise<TokenM
   const promise = (async () => {
     try {
       const symbol = await simulateTokenCall(address, "symbol");
+
       if (!symbol) {
         throw new Error("Token did not return a valid symbol.");
       }
 
       let name = symbol;
+
       try {
         const nameVal = await simulateTokenCall(address, "name");
         if (nameVal) name = nameVal;
       } catch {
-        // SEP-41 tokens may omit name or fail name(), fallback to symbol
+        // SEP-41 tokens may omit name or fail name(), fallback to symbol.
       }
 
       const result: TokenMetadata = { symbol, name };
       metadataCache.set(address, result);
       notifyListeners();
+
       return result;
     } catch (err) {
       // The table of known tokens remains as a fallback.
       const fallback = KNOWN_TOKEN_METADATA[address];
+
       if (fallback) {
         return fallback;
       }
+
       throw err;
     }
   })();
 
   inFlightRequests.set(address, promise);
+
   try {
     return await promise;
   } finally {
@@ -166,22 +198,41 @@ export async function readTokenMetadata(tokenContractId: string): Promise<TokenM
 export function useTokenMetadata(tokenAddress: string): TokenMetadata | null {
   const [metadata, setMetadata] = useState<TokenMetadata | null>(() => {
     const candidate = tokenAddress.trim();
-    return getCachedTokenMetadata(candidate) ?? KNOWN_TOKEN_METADATA[candidate] ?? null;
+    return (
+      getCachedTokenMetadata(candidate) ??
+      KNOWN_TOKEN_METADATA[candidate] ??
+      null
+    );
   });
 
   useEffect(() => {
     let cancelled = false;
     const candidate = tokenAddress.trim();
+
     if (!candidate || !isValidContractAddress(candidate)) {
       setMetadata(null);
       return;
     }
 
-    const current = getCachedTokenMetadata(candidate) ?? KNOWN_TOKEN_METADATA[candidate] ?? null;
+    const current =
+      getCachedTokenMetadata(candidate) ??
+      KNOWN_TOKEN_METADATA[candidate] ??
+      null;
+
     if (current) {
       setMetadata(current);
       return;
     }
+
+    const unsubscribe = subscribeTokenMetadata(() => {
+      if (!cancelled) {
+        setMetadata(
+          getCachedTokenMetadata(candidate) ??
+            KNOWN_TOKEN_METADATA[candidate] ??
+            null,
+        );
+      }
+    });
 
     readTokenMetadata(candidate)
       .then((meta) => {
@@ -192,12 +243,6 @@ export function useTokenMetadata(tokenAddress: string): TokenMetadata | null {
           setMetadata(KNOWN_TOKEN_METADATA[candidate] ?? null);
         }
       });
-
-    const unsubscribe = subscribeTokenMetadata(() => {
-      if (!cancelled) {
-        setMetadata(getCachedTokenMetadata(candidate) ?? KNOWN_TOKEN_METADATA[candidate] ?? null);
-      }
-    });
 
     return () => {
       cancelled = true;
@@ -219,12 +264,15 @@ export function useTokensMetadata(tokenAddresses: string[]): void {
 
   useEffect(() => {
     let cancelled = false;
-    const unique = Array.from(new Set(tokenAddressesRef.current.map((t) => t.trim()))).filter(
-      (t) =>
-        Boolean(t) &&
-        isValidContractAddress(t) &&
-        !getCachedTokenMetadata(t) &&
-        !KNOWN_TOKEN_METADATA[t],
+
+    const unique = Array.from(
+      new Set(tokenAddressesRef.current.map((token) => token.trim())),
+    ).filter(
+      (token) =>
+        Boolean(token) &&
+        isValidContractAddress(token) &&
+        !getCachedTokenMetadata(token) &&
+        !KNOWN_TOKEN_METADATA[token],
     );
 
     for (const token of unique) {
@@ -233,7 +281,7 @@ export function useTokensMetadata(tokenAddresses: string[]): void {
 
     const unsubscribe = subscribeTokenMetadata(() => {
       if (!cancelled) {
-        setTick((t) => t + 1);
+        setTick((tick) => tick + 1);
       }
     });
 

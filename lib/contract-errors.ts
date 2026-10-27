@@ -1,3 +1,4 @@
+
 import { config } from "@/lib/config";
 
 // Maps the numeric error codes emitted by the on-chain contract to plain-language
@@ -81,11 +82,17 @@ const ATTRIBUTED_ERROR_EVENT_RE =
  */
 function failingContractId(raw: string, code: number): string | null {
   let oldestMatchingContract: string | null = null;
+
   for (const event of raw.matchAll(ATTRIBUTED_ERROR_EVENT_RE)) {
     if (parseInt(event[2], 10) !== code) continue;
-    if (event[3]?.includes("failing with contract error")) return event[1];
+
+    if (event[3]?.includes("failing with contract error")) {
+      return event[1];
+    }
+
     oldestMatchingContract = event[1];
   }
+
   return oldestMatchingContract;
 }
 
@@ -116,8 +123,13 @@ function failingContractId(raw: string, code: number): string | null {
 export function parseContractError(raw: string): string {
   const match = CONTRACT_ERROR_RE.exec(raw);
   if (!match) return GENERIC_FAILURE;
+
   const code = parseInt(match[1], 10);
   const failing = failingContractId(raw, code);
-  if (failing !== null && failing !== config.contractId) return tokenFailureMessage(code);
+
+  if (failing !== null && failing !== config.contractId) {
+    return tokenFailureMessage(code);
+  }
+
   return CONTRACT_ERROR_MESSAGES[code] ?? `${GENERIC_FAILURE} (error code ${code})`;
 }

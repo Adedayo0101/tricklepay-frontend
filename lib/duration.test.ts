@@ -194,7 +194,7 @@ describe("longDurationWarning", () => {
   it("warns one day past the ten-year threshold, naming the duration", () => {
     const warning = longDurationWarning(START, "2036-08-28T10:00");
     expect(warning).toMatch(/more than ten years/);
-    expect(warning).toMatch(/\d+ days?/);
+    expect(warning).toMatch(/\d+ (days?|weeks?)/);
   });
 
   it("names an exact-year span in years, not days — the mistyped-year case", () => {

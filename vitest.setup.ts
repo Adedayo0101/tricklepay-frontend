@@ -46,6 +46,24 @@ if (typeof window !== "undefined") {
 // @ts-expect-error IS_REACT_ACT_ENVIRONMENT is a global flag for React
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 
+// Ensure Buffer instances satisfy `instanceof Uint8Array` across realms (e.g. JSDOM)
+if (typeof Uint8Array !== "undefined" && typeof Symbol !== "undefined" && Symbol.hasInstance) {
+  const origHasInstance = Uint8Array[Symbol.hasInstance];
+  Object.defineProperty(Uint8Array, Symbol.hasInstance, {
+    value(instance: unknown) {
+      if (
+        instance &&
+        typeof instance === "object" &&
+        (instance as { constructor?: { name?: string } }).constructor?.name === "Buffer"
+      ) {
+        return true;
+      }
+      return origHasInstance ? origHasInstance.call(Uint8Array, instance) : false;
+    },
+    configurable: true,
+  });
+}
+
 import { cleanup } from "@testing-library/react";
 import { afterEach } from "vitest";
 

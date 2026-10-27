@@ -13,9 +13,9 @@ import {
   readTokenDecimals,
 } from "@/lib/token-decimals";
 
-const TOKEN_6 = "CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC";
-const TOKEN_7 = "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM";
-const TOKEN_18 = "CBWOTQJBL6CPHCV6E3JCY3RFFW6NMYE7QAYZ5QZ2VTRXZ2Q5Z7Z5Z7Z5";
+const TOKEN_6 = "CADAMBQGAYDAMBQGAYDAMBQGAYDAMBQGAYDAMBQGAYDAMBQGAYDAMSST";
+const TOKEN_7 = "CADQOBYHA4DQOBYHA4DQOBYHA4DQOBYHA4DQOBYHA4DQOBYHA4DQP5KR";
+const TOKEN_18 = "CAJBEEQSCIJBEEQSCIJBEEQSCIJBEEQSCIJBEEQSCIJBEEQSCIJBERTS";
 
 describe("token decimals helper", () => {
   beforeEach(() => {
@@ -25,6 +25,7 @@ describe("token decimals helper", () => {
 
   it("reads 6-decimal token correctly", async () => {
     simulateTransaction.mockResolvedValueOnce({
+      transactionData: {},
       result: { retval: nativeToScVal(6, { type: "u32" }) },
     });
 
@@ -34,6 +35,7 @@ describe("token decimals helper", () => {
 
   it("reads 7-decimal token correctly", async () => {
     simulateTransaction.mockResolvedValueOnce({
+      transactionData: {},
       result: { retval: nativeToScVal(7, { type: "u32" }) },
     });
 
@@ -43,6 +45,7 @@ describe("token decimals helper", () => {
 
   it("reads 18-decimal token correctly", async () => {
     simulateTransaction.mockResolvedValueOnce({
+      transactionData: {},
       result: { retval: nativeToScVal(18, { type: "u32" }) },
     });
 
@@ -52,6 +55,7 @@ describe("token decimals helper", () => {
 
   it("caches decimals per token for the session", async () => {
     simulateTransaction.mockResolvedValueOnce({
+      transactionData: {},
       result: { retval: nativeToScVal(18, { type: "u32" }) },
     });
 

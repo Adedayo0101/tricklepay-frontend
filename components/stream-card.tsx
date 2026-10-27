@@ -2,10 +2,10 @@ import Link from "next/link";
 import type { JSX } from "react";
 
 import { StreamStatusBadge } from "@/components/stream-status-badge";
+import { useTokenMetadata } from "@/hooks/use-token-metadata";
 import { formatTokenAmount, truncateAddress } from "@/lib/format";
 import { formatRemaining, formatSchedule } from "@/lib/schedule";
 import { markNavigatingToStream } from "@/lib/scroll";
-import { useTokenMetadata } from "@/lib/token-metadata";
 import type { StreamView } from "@/types/stream";
 
 export function StreamCard({ stream }: { stream: StreamView }): JSX.Element {

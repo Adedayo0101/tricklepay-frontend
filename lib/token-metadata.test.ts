@@ -7,6 +7,7 @@ vi.mock("@/lib/contract-network", () => ({
   server: () => ({ simulateTransaction }),
 }));
 
+import { nativeAssetContractId } from "@/lib/native-asset";
 import {
   clearTokenMetadataCache,
   getCachedTokenMetadata,
@@ -15,9 +16,9 @@ import {
   setCachedTokenMetadata,
 } from "@/lib/token-metadata";
 
-const KNOWN_TOKEN = "CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC";
+const KNOWN_TOKEN = nativeAssetContractId();
 const UNKNOWN_TOKEN = "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM";
-const ANOTHER_UNKNOWN_TOKEN = "CBWOTQJBL6CPHCV6E3JCY3RFFW6NMYE7QAYZ5QZ2VTRXZ2Q5Z7Z5Z7Z5";
+const ANOTHER_UNKNOWN_TOKEN = "CAJBEEQSCIJBEEQSCIJBEEQSCIJBEEQSCIJBEEQSCIJBEEQSCIJBERTS";
 
 describe("token metadata helper", () => {
   beforeEach(() => {
@@ -29,9 +30,11 @@ describe("token metadata helper", () => {
     // First call simulates symbol() then name()
     simulateTransaction
       .mockResolvedValueOnce({
+        transactionData: {},
         result: { retval: nativeToScVal("EURC", { type: "string" }) },
       })
       .mockResolvedValueOnce({
+        transactionData: {},
         result: { retval: nativeToScVal("Euro Coin", { type: "string" }) },
       });
 
@@ -54,9 +57,11 @@ describe("token metadata helper", () => {
   it("deduplicates in-flight simulation requests for the same token", async () => {
     simulateTransaction
       .mockResolvedValueOnce({
+        transactionData: {},
         result: { retval: nativeToScVal("TEST", { type: "string" }) },
       })
       .mockResolvedValueOnce({
+        transactionData: {},
         result: { retval: nativeToScVal("Test Token", { type: "string" }) },
       });
 
@@ -73,6 +78,7 @@ describe("token metadata helper", () => {
   it("falls back to symbol when name() call fails", async () => {
     simulateTransaction
       .mockResolvedValueOnce({
+        transactionData: {},
         result: { retval: nativeToScVal("BTC", { type: "string" }) },
       })
       .mockResolvedValueOnce({
